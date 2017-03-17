@@ -1,0 +1,54 @@
+<!-- Signup Page -->
+<div class="container" ng-controller="SignupCtrl" ng-cloak>
+     <div class="signup-form" class="row">
+     	  <div class="col-md-2"></div>
+	  <div class="col-md-8 text-left">
+	       <h2 align="centre">Create an account</h2>
+	       <br>
+	       <form>
+	       <div class="form-group">
+	       	    <div id="name-fields" class="row">
+	       	    	 <div class="col-md-6">
+	       	       	      <label>Your first name</label>
+	       	       	      <input type="text" class="form-control input-lg"
+		       	      	     placeholder="John" ng-model="formData.firstName" required>
+		         </div>
+			 <div class="col-md-6">
+			      <label>Your last name</label>
+			      <input type="text" class="form-control input-lg"
+			      	     placeholder="Doe" ng-model="formData.lastName" required>
+			 </div>
+		    </div>
+	       	    <div id="user-name">
+	            	 <br>
+			 <label>Your user name</label>
+			 <input type="text" class="form-control input-lg"
+	       	    	  	placeholder="username" ng-model="formData.userName" required>
+		    	 <br>
+	       	    </div>
+		    <div id="password-group" class="row">
+	       	    	 <div class="col-md-6">
+		    	      <label>Password</label>
+			      <input type="password" class="form-control input-lg"
+			      	     placeholder="Password" ng-model="formData.password" required>
+			 </div>
+			 <div class="col-md-6">
+			      <label>Re-type Password</label>
+			      <input type="password" class="form-control input-lg"
+			      	     placeholder="Type your password again" ng-model="formData.password2" required>
+			 </div>
+	       	    </div>
+	      </div>
+	      </form>
+	      <div ng-show="!passwordMatch(formData.password, formData.password2)">
+	      	   <label>Passwords don't match</label>
+	      </div>
+	      <div id="button" class="col-md-12">
+	      <br>
+	      	    <button type="submit" class="btn btn-primary btn-lg"
+		    	    ng-click="createAccount()">Create account</button>
+	      </div>
+          </div>
+     	  <div class="col-md-2"></div>
+     </div>
+</div>

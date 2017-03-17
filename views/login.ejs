@@ -1,0 +1,29 @@
+<!-- Login Page -->
+<div ng-controller="LoginCtrl" ng-cloak>
+     <div class="container">
+     	  <h1 align="center">Login Example</h1>
+	  <br>
+	  <div id="login-form" class="row">
+	       <div class="col-md-4"></div>
+	       	    <div class="col-md-4 text-center">
+		    <form>
+			<div class="form-group">
+			     <input type="text" class="form-control input-lg"
+			     	    placeholder="User Name" ng-model="formData.userName">
+			     <br>
+			     <input type="password" class="form-control input-lg"
+			     	    placeholder="Password" ng-model="formData.password">
+			     <br>
+			     <div id="buttons" class="row">
+			     	  <button type="submit" class="btn btn-primary btn-lg"
+				  	  ng-click="submitLogin()">Log in</button>
+				  <button type="submit" class="btn btn-primary btn-lg"
+				  	  ng-click="goToRegister()">Register</button>
+			     </div>
+			</div>
+		    </form>
+		    </div>
+	       <div class="col-md-4"></div>
+	  </div>
+     </div>
+</div>
