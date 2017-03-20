@@ -45,7 +45,7 @@ module.exports = {
 		{email: req.param('email')},
 		{userName: req.param('userName')}
 	    ]
-	}, function foundUser(err, createdUser) {	    
+	}, function foundUser(err, createdUser) {
 	    // handle Mongo DB error
 	    if (err) return res.negotiate(err);
 	    // user not found
@@ -148,13 +148,13 @@ module.exports = {
      *     OR
      *     - Code: 500
      *     - Content: string
-     */ 
+     */
     signup: function (req, res) {
 	// Back-end validation of the different user attributes
 	// firstName
 	if (_.isUndefined(req.param('firstName')))
 	    return res.badRequest('A first name is required');
-	
+
 	// lastName
 	if (_.isUndefined(req.param('lastName')))
 	    return res.badRequest('A last name is required');
@@ -198,7 +198,7 @@ module.exports = {
 	    // Therefore, it sends data to Mongo DB
 	    User.create(options).exec(function(err, createdUser) {
 		if (err){
-		    // Manage the errors from Mongo DB. 
+		    // Manage the errors from Mongo DB.
 		    if (err.invalidAttributes &&                               //  \
 			err.invalidAttributes.userName &&                      //  | <---- Seriously??? WTH!!!
 			err.invalidAttributes.userName[0] &&                   //  |
@@ -329,17 +329,17 @@ module.exports = {
 	User.update({
 	    id: req.param('id')
 	},{
-	    deleted: true
+	    banned: true
 	}, function (err, removedUser){
 	    if (err)
 		return res.negotiate(err);
 	    if (removedUser.length === 0)
 		return res.notFound();
-	    return res.ok();
+	    return res.send(200,removedUser);
 	});
 	return null; // To keep compiler happy
     },
-    
+
     /**
      * RESTORE SOFT-DELETED USER PROFILE
      *   Restore soft deleted profile action (overrides the blueprint update action).
@@ -453,7 +453,7 @@ module.exports = {
 	    bcrypt.hash(req.param('password'), 10, function(err, hash) {
 		if (err)
 		    return reject(err);
-		
+
 		resolve(hash);
 
 		return null; // To keep compiler happy
@@ -529,7 +529,7 @@ module.exports = {
 	    if (err)
 		return res.negotiate(err);
 	    res.ok();
-	    
+
 	    return null; // To keep compiler happy
 	});
     },
@@ -560,7 +560,7 @@ module.exports = {
 	    if (err)
 		return res.negotiate(err);
 	    res.ok();
-	    
+
 	    return null; // To keep compiler happy
 	});
     },
@@ -591,7 +591,7 @@ module.exports = {
 	    if (err)
 		return res.negotiate(err);
 	    res.ok();
-	    
+
 	    return null; // To keep compiler happy
 	});
     }
