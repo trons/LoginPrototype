@@ -19,6 +19,103 @@ var bcrypt = require('bcryptjs');
    EXPORT
    ====== */
 module.exports = {
+    /**
+     * LOGIN
+     *   It handles a user's login.
+     *
+     * + URL: /login
+     * + Method: PUT
+     * + URL Params: None
+     * + Data Params: {userName: string,
+     *                 password: string}
+     * + Success Response:
+     *     - Code: 200
+     *     - Content:
+     * + Error Response:
+     *     - Code: 404
+     *     - Content: string
+     *     OR
+     *     - Code: 500
+     *     - Content: string
+     */
+    login: function(req, res){
+	// All this must be replaced with the PASSPORT library later.
+	User.findOne({
+	    or : [
+		{email: req.param('email')},
+		{userName: req.param('userName')}
+	    ]
+	}, function foundUser(err, createdUser) {	    
+	    // handle Mongo DB error
+	    if (err) return res.negotiate(err);
+	    // user not found
+	    if (!createdUser) return res.notFound();
+	    // check password
+	    new Promise(function(resolve, reject) {
+		bcrypt.compare(req.param('password'), createdUser.encryptedPassword, function (err, match){
+		    if (err)
+			return reject(err);
+		    resolve(match);
+		    return null; // To keep compiler happy.
+		});
+	    }).then(function (match){
+		// Promise was successful
+		if (!match)
+		    return res.notFound();
+
+		if (createdUser.deleted)
+		    return res.forbidden("'Your account has been deleted. Please restore your account'");
+
+		if (createdUser.banned)
+		    return res.forbidden("'Your account has been banned.'");
+
+		// Login user
+		req.session.userId = createdUser.id;
+		// Respond with 200 OK status
+		return res.ok();
+	    }, function (err){
+		// Promise failed, therefeore it fails misserably
+		return res.status(500).send('Bcrypt error.');
+	    });
+	    return null; // To keep compiler happy.
+	});
+    },
+
+    /**
+     * LOGOUT
+     *   It handles a user's logout.
+     *
+     * + URL: /logout
+     * + Method: GET
+     * + URL Params: None
+     * + Data Params: {userName: string,
+     *                 password: string}
+     * + Success Response:
+     *     - Code: 200
+     *     - Content:
+     * + Error Response:
+     *     - Code: 404
+     *     - Content: string
+     *     OR
+     *     - Code: 500
+     *     - Content: string
+     */
+    logout: function (req, res) {
+	if (!req.session.userId)
+	    return res.redirect('/');
+	User.findOne(req.session.userId, function foundUser(err, createdUser){
+	    if (err)
+		return res.negotiate(err);
+	    if (!createdUser){
+		sails.log.verbose('Sessionrefers to a user who no longer exists');
+		return res.redirect('/');
+	    }
+	    req.session.userId = null;
+	    return res.redirect('/');
+	});
+	return null; // To keep compiler happy.
+    },
+
     /* ===================
        NORMAL USER ACTIONS
        =================== */
@@ -188,7 +285,7 @@ module.exports = {
      *     - Content: string
      */
     delete: function(req, res) {
-
+	console.log('In UserController.delete');
 	if (!req.param('id'))
 	    return res.badRequest('id is a required parameter.');
 
@@ -225,6 +322,7 @@ module.exports = {
      *     - Content: string
      */
     removeProfile: function(req, res){
+	console.log('In UserController.removeProfile');
 	if (!req.param('id'))
 	    return res.badRequest('id is a required parameter.');
 

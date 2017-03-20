@@ -2,7 +2,7 @@
 
 var module = angular.module('LoginTest', []);
 
-module.controller('LoginCtrl', ['$scope', '$window', function($scope, $window){
+module.controller('Login', ['$scope', '$window', function($scope, $window){
     $scope.submitLogin = function() {
 	var formData = $scope.formData;
 	
@@ -10,11 +10,12 @@ module.controller('LoginCtrl', ['$scope', '$window', function($scope, $window){
     };
     
     $scope.goToRegister = function() {
+	console.log('in goToRegister = function()');
 	$window.location.href='/signup';
     };
 }]);
 
-/*module.controller('SignupCtrl', ['$scope', '$window', '$http', function($scope, $window, $http) {
+module.controller('SignupCtrl', ['$scope', '$window', '$http', function($scope, $window, $http) {
     $scope.createAccount = function () {
 	var formData = $scope.formData;
 
@@ -59,10 +60,10 @@ module.controller('LoginCtrl', ['$scope', '$window', function($scope, $window){
 			   }
 			   $scope.$apply();
 			   $window.location.href='/';
-		       });*\/
+		       });*/
     };
 
     $scope.passwordMatch = function (password1, password2) {
 	return password1 === password2;
     };
-}]);*/
+}]);
