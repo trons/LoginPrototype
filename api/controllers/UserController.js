@@ -19,6 +19,9 @@ var bcrypt = require('bcryptjs');
    EXPORT
    ====== */
 module.exports = {
+    /* ======================
+       AUTHENTICATION ACTIONS
+       ====================== */
     /**
      * LOGIN
      *   It handles a user's login.
@@ -40,29 +43,32 @@ module.exports = {
      */
     login: function(req, res){
 	// All this must be replaced with the PASSPORT library later.
-	User.findOne({
+	User.findOne({userName: req.param('userName')}
+	    /*{
 	    or : [
-		{email: req.param('email')},
+		{email: req.param('email')}, // <--- This is to keep it consistent with the example in the book.
 		{userName: req.param('userName')}
 	    ]
-	}, function foundUser(err, createdUser) {
+	}*/, function foundUser(err, createdUser) {
 	    // handle Mongo DB error
 	    if (err) return res.negotiate(err);
 	    // user not found
 	    if (!createdUser) return res.notFound();
 	    // check password
-	    new Promise(function(resolve, reject) {
+	    var checkPassword = new Promise(function(resolve, reject) {
 		bcrypt.compare(req.param('password'), createdUser.encryptedPassword, function (err, match){
 		    if (err)
 			return reject(err);
 		    resolve(match);
 		    return null; // To keep compiler happy.
 		});
-	    }).then(function (match){
+	    });
+
+	    checkPassword.then(function (match){
 		// Promise was successful
 		if (!match)
 		    return res.notFound();
-
+		
 		if (createdUser.deleted)
 		    return res.forbidden("'Your account has been deleted. Please restore your account'");
 
@@ -72,10 +78,10 @@ module.exports = {
 		// Login user
 		req.session.userId = createdUser.id;
 		// Respond with 200 OK status
-		return res.ok();
+		return res.json(createdUser);
 	    }, function (err){
 		// Promise failed, therefeore it fails misserably
-		return res.status(500).send('Bcrypt error.');
+		return res.negotiate(err);
 	    });
 	    return null; // To keep compiler happy.
 	});
@@ -103,14 +109,16 @@ module.exports = {
     logout: function (req, res) {
 	if (!req.session.userId)
 	    return res.redirect('/');
+
 	User.findOne(req.session.userId, function foundUser(err, createdUser){
 	    if (err)
 		return res.negotiate(err);
+	    
 	    if (!createdUser){
-		sails.log.verbose('Sessionrefers to a user who no longer exists');
+		sails.log.verbose('Session refers to a user who no longer exists');
 		return res.redirect('/');
 	    }
-	    req.session.userId = null;
+	    req.session.userId = null; // <--- removes the user session.
 	    return res.redirect('/');
 	});
 	return null; // To keep compiler happy.
@@ -210,11 +218,12 @@ module.exports = {
 			return res.alreadyInUse(err); // this is equivalent to the previous two lines.
 		    }
 		};
+		req.session.userId = createdUser.id;  // <--- authenticates the user.
 		return res.json(createdUser);
 	    });
 	}, function(err){
 	    // Promise failed, therefeore it fails misserably
-	    return res.status(500).send('Bcrypt error.');
+	    return res.negotiate(err);
 	});
 	return null; // To keep compiler happy.
     },
@@ -246,7 +255,7 @@ module.exports = {
      *     - Content: string
      */
     profile: function(req, res) {
-	User.findOne(req.param('id')).exec(function foundUser(err, user) {
+	User.findOne(req.session.userId).exec(function foundUser(err, user) {
 	    if (err)
 		return res.negotiate(err);
 	    if (!user)
@@ -285,18 +294,17 @@ module.exports = {
      *     - Content: string
      */
     delete: function(req, res) {
-	console.log('In UserController.delete');
 	if (!req.param('id'))
 	    return res.badRequest('id is a required parameter.');
 
 	User.destroy({
 	    id: req.param('id')
-	}).exec(function (err, usersDestroyed){
+	}).exec(function (err, userDestroyed){
 	    if (err)
 		return res.negotiate(err);
-	    if (usersDestroyed.length === 0)
+	    if (userDestroyed.length === 0)
 		return res.notFound();
-	    return res.ok();
+	    return res.json(userDestroyed);
 	});
 	return null; // To keep compiler happy
     },
@@ -322,19 +330,19 @@ module.exports = {
      *     - Content: string
      */
     removeProfile: function(req, res){
-	console.log('In UserController.removeProfile');
-	if (!req.param('id'))
-	    return res.badRequest('id is a required parameter.');
+	/*if (!req.session.userId)
+	    return res.badRequest('id is a required parameter.');*/
 
 	User.update({
-	    id: req.param('id')
+	    id: req.session.userId
 	},{
-	    banned: true
+	    deleted: true
 	}, function (err, removedUser){
 	    if (err)
 		return res.negotiate(err);
 	    if (removedUser.length === 0)
 		return res.notFound();
+	    req.session.userId = null; // <--- removes the user session.
 	    return res.send(200,removedUser);
 	});
 	return null; // To keep compiler happy
@@ -360,29 +368,40 @@ module.exports = {
      *     - Code: 500
      *     - Content: string
      */
-    restoreProfile: function(req, res){
-	User.findOne({userName: req.param('userName')}, function foundUser(err, user){
+    restoreProfile: function(req, res) {
+	User.findOne({userName: req.param('userName')}).exec(function foundUser(err, user) {
 	    if (err)
 		return res.negotiate(err);
 	    if (!user)
 		return res.notFound();
 
-	    bcrypt.compare(req.param('password'), user.encryptedPassword, function (err, match) {
-		if (err)
-		    return res.negotiate(err);
-		if (!match)
+	    var checkUser = new Promise(function(resolve, reject) {
+		bcrypt.compare(req.param('password'), user.encryptedPassword, function(err, match) {
+		    if (err)
+			return reject(err);
+		
+		    resolve(match);
+		    return null; // To keep compiler happy.
+		});
+	    });
+	    
+	    checkUser.then(function(match) {
+		// Promise was successful
+		if (!match){
 		    return res.notFound();
-		User.update({
-		    id: user.id
-		}, {
-		    deleted: false
-		}, function (err, updatedUser){
+		}
+		
+		User.update({id: user.id}, {deleted: false}, function(err, updatedUser) {
+		    if (err)
+			return res.negotiate(err);
+		    req.session.userId = user.id;  // <--- Authenticates the user.
 		    return res.json(updatedUser);
 		});
-
 		return null; // To keep compiler happy
+	    }, function (err) {
+		// Promise failed
+		return res.negotiate(err);
 	    });
-
 	    return null; // To keep compiler happy
 	});
     },
@@ -411,7 +430,7 @@ module.exports = {
      */
     updateProfile: function(req, res) {
 	User.update({
-	    id: req.param('id')
+	    id: req.session.userId
 	}, {
 	    firstName: req.param('firstName'),
 	    lastName: req.param('lastName')
@@ -445,11 +464,12 @@ module.exports = {
     changePassword: function(req, res) {
 	if (_.isUndefined(req.param('password')))
 	    return res.badRequest('A password is required.');
+
 	if (req.param('password').length < 6)
 	    return res.badRequest('Pasword must be at least 6 characters long.');
 
 	// Encrypt password as before
-	new Promise(function(resolve, reject) {
+	var encPassword = new Promise(function(resolve, reject) {
 	    bcrypt.hash(req.param('password'), 10, function(err, hash) {
 		if (err)
 		    return reject(err);
@@ -458,16 +478,18 @@ module.exports = {
 
 		return null; // To keep compiler happy
 	    });
-	}).then(function(hash) {
+	});
+
+	encPassword.then(function(hash) {
 	    // Promise has been successful Therefore, it sends data to Mongo DB
-	    User.update({id: req.param('id')}, {encryptedPassword: hash}).exec(function(err, updatedUser) {
+	    User.update({id: req.session.userId}, {encryptedPassword: hash}).exec(function(err, updatedUser) {
 		if (err)
 		    return res.negotiate(err);
 		return res.json(updatedUser);
 	    });
 	}, function(err){
 	    // Promise failed, therefeore it fails misserably
-	    return res.status(500).send('Bcrypt error.');
+	    return res.negotiate(err);
 	});
 
 	return null; // To keep compiler happy
@@ -528,7 +550,7 @@ module.exports = {
 	}).exec(function(err, update){
 	    if (err)
 		return res.negotiate(err);
-	    res.ok();
+	    res.ok('OK');
 
 	    return null; // To keep compiler happy
 	});
@@ -555,11 +577,11 @@ module.exports = {
      */
     updateBanned: function (req, res) {
 	User.update(req.param('id'), {
-	    admin:req.param('banned')
+	    banned: req.param('banned')
 	}).exec(function(err, update){
 	    if (err)
 		return res.negotiate(err);
-	    res.ok();
+	    res.ok('OK');
 
 	    return null; // To keep compiler happy
 	});
@@ -586,11 +608,11 @@ module.exports = {
      */
     updateDeleted: function (req, res) {
 	User.update(req.param('id'), {
-	    admin:req.param('deleted')
+	    deleted: req.param('deleted')
 	}).exec(function(err, update){
 	    if (err)
 		return res.negotiate(err);
-	    res.ok();
+	    res.ok('OK');
 
 	    return null; // To keep compiler happy
 	});

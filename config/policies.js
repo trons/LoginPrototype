@@ -28,6 +28,21 @@ module.exports.policies = {
 
   // '*': true,
 
+    UserController : {
+	login: ['isLoggedOut'],
+	signup: ['isLoggedOut'],
+	profile: ['isLoggedIn'],
+	delete: ['isLoggedIn', 'isAdmin'],
+	removeProfile: ['isLoggedIn'],
+	restoreProfile: ['isLoggedOut'],
+	updateProfile: ['isLoggedIn'],
+	changePassword: ['isLoggedIn'],
+	//adminUsers: ['isLoggedIn', 'isAdmin'],
+	updateAdmin: ['isLoggedIn', 'isAdmin'],
+	updateBanned: ['isLoggedIn', 'isAdmin'],
+	updateDeleted: ['isLoggedIn', 'isAdmin']
+    }
+
   /***************************************************************************
   *                                                                          *
   * Here's an example of mapping some policies to run before a controller    *

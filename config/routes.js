@@ -22,59 +22,60 @@
 
 module.exports.routes = {
 
-  /***************************************************************************
-  *                                                                          *
-  * Make the view located at `views/homepage.ejs` (or `views/homepage.jade`, *
-  * etc. depending on your default view engine) your home page.              *
-  *                                                                          *
-  * (Alternatively, remove this and add an `index.html` file in your         *
-  * `assets` directory)                                                      *
-  *                                                                          *
-  ***************************************************************************/
+    /****************************************************************************
+     *                                                                          *
+     * Make the view located at `views/homepage.ejs` (or `views/homepage.jade`, *
+     * etc. depending on your default view engine) your home page.              *
+     *                                                                          *
+     * (Alternatively, remove this and add an `index.html` file in your         *
+     * `assets` directory)                                                      *
+     *                                                                          *
+     ****************************************************************************/
 
-  /***************************************************************************
-   * JSON API                                                                *
-   ***************************************************************************/
-  'PUT /login': 'UserController.login',
-  'GET /logout': 'UserController.logout',
+    /***************************************************************************
+     * JSON API                                                                *
+     ***************************************************************************/
+    // Custom REST Routes for user actions
+    'PUT /login': 'UserController.login',
+    'GET /logout': 'UserController.logout',
 
-  /***************************************************************************
-   * Server-rendered HTML Pages                                              *
-   * (Not quite, this is only to be consistent with the book example)        *
-   ***************************************************************************/
+    'GET /user/admin-users': 'UserController.adminUsers',
+    'GET /user/profile': 'UserController.profile',
 
-  'GET /': {
-      view: 'login'
-  },
+    'POST /user/signup': 'UserController.signup',
+    'PUT /user/remove-profile': 'UserController.removeProfile',
+    'PUT /user/restore-profile': 'UserController.restoreProfile',
+    'PUT /user/update-profile': 'UserController.updateProfile',
+    'PUT /user/change-password': 'UserController.changePassword',
+    'PUT /user/update-admin/:id': 'UserController.updateAdmin',
+    'PUT /user/update-banned/:id': 'UserController.updateBanned',
+    'PUT /user/update-deleted/:id': 'UserController.updateDeleted',
 
-  'GET /signup': {
-      view: 'signup'
-    //controller: 'UserController',
-    //action: 'registration'
-  },
+    'DELETE /user/:id': 'UserController.delete',
 
-  'GET /profile' : 'UserController.profile',
-    /*{
-	controller: 'UserController',
-	action: 'profile'
-    },*/
+    /***************************************************************************
+     * Server-rendered HTML Pages                                              *
+     * (Not quite, this is only to be consistent with the book example)        *
+     ***************************************************************************/
+
+    'GET /': {
+	view: 'login'
+    },
+
+    'GET /signup': {
+	view: 'signup'
+    }
+
     
-  'POST /user/signup': 'UserController.signup',
-
-  'DELETE /user/:id': 'UserController.removeProfile'
-    /*{
-	controller: 'UserController',
-	action: 'signup'
-    }*/
     
-  /***************************************************************************
-   *                                                                         *
-   * Custom routes here...                                                   *
-   *                                                                         *
-   * If a request to a URL doesn't match any of the custom routes above, it  *
-   * is matched against Sails route blueprints. See `config/blueprints.js`   *
-   * for configuration options and examples.                                 *
-   *                                                                         *
-   ***************************************************************************/
+    /***************************************************************************
+     *                                                                         *
+     * Custom routes here...                                                   *
+     *                                                                         *
+     * If a request to a URL doesn't match any of the custom routes above, it  *
+     * is matched against Sails route blueprints. See `config/blueprints.js`   *
+     * for configuration options and examples.                                 *
+     *                                                                         *
+     ***************************************************************************/
 
 };

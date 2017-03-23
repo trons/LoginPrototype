@@ -28,9 +28,12 @@ module.exports = {
       admin: {
 	  type: 'boolean'
       },
+      deleted: {
+	  type: 'boolean'
+      },
       banned: {
 	  type: 'boolean',
-    defaultsTo:false
+	  defaultsTo:false
       },
       toJSON: function() { // <---- Overrides toJSON method in the model so blueprints don't return all attributes
 	  var modelAttributes = this.toObject();
