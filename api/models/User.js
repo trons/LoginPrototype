@@ -20,7 +20,8 @@ module.exports = {
       },
       userName: {
 	  type: 'string',
-	  unique: 'true' // <---- Forces the attribute to be unique (unique validation)
+	  required: 'true', // <---- Forces the attribute to be there
+	  unique: 'true'    // <---- Forces the attribute to be unique (unique validation)
       },
       encryptedPassword: {
 	  type: 'string'
@@ -29,11 +30,12 @@ module.exports = {
 	  type: 'boolean'
       },
       deleted: {
-	  type: 'boolean'
+	  type: 'boolean',
+	  defaultsTo: 'false'
       },
       banned: {
 	  type: 'boolean',
-	  defaultsTo:false
+	  defaultsTo: 'false' // <---- Sets the default value to 'false'
       },
       toJSON: function() { // <---- Overrides toJSON method in the model so blueprints don't return all attributes
 	  var modelAttributes = this.toObject();

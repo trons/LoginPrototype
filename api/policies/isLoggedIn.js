@@ -5,7 +5,7 @@
  */
 
 module.exports = function isLoggedIn(req, res, next) {
-    if (req.session.userId)
+    if (req.isAuthenticated())
 	return next();
     
     if (req.wantsJSON)

@@ -14,6 +14,7 @@
  promise.
  */
 var bcrypt = require('bcryptjs');
+var passport = require('passport');
 
 /* ======
    EXPORT
@@ -41,50 +42,28 @@ module.exports = {
      *     - Code: 500
      *     - Content: string
      */
-    login: function(req, res){
-	// All this must be replaced with the PASSPORT library later.
-	User.findOne({userName: req.param('userName')}
-	    /*{
-	    or : [
-		{email: req.param('email')}, // <--- This is to keep it consistent with the example in the book.
-		{userName: req.param('userName')}
-	    ]
-	}*/, function foundUser(err, createdUser) {
-	    // handle Mongo DB error
-	    if (err) return res.negotiate(err);
-	    // user not found
-	    if (!createdUser) return res.notFound();
-	    // check password
-	    var checkPassword = new Promise(function(resolve, reject) {
-		bcrypt.compare(req.param('password'), createdUser.encryptedPassword, function (err, match){
-		    if (err)
-			return reject(err);
-		    resolve(match);
-		    return null; // To keep compiler happy.
-		});
-	    });
-
-	    checkPassword.then(function (match){
-		// Promise was successful
-		if (!match)
-		    return res.notFound();
-		
-		if (createdUser.deleted)
-		    return res.forbidden("'Your account has been deleted. Please restore your account'");
-
-		if (createdUser.banned)
-		    return res.forbidden("'Your account has been banned.'");
-
-		// Login user
-		req.session.userId = createdUser.id;
-		// Respond with 200 OK status
-		return res.json(createdUser);
-	    }, function (err){
-		// Promise failed, therefeore it fails misserably
+    login: function(req, res, next){
+	passport.authenticate('local', function (err, user, response){
+	    if (err)
 		return res.negotiate(err);
-	    });
+	    if (user)
+		return res.json(user);
+	    if (!user){
+		switch(response.message){
+		case 'user_not_found':
+		    return res.notFound('The username you introduced is unknown.');
+		case 'wrong_password':
+		    return res.notFound('The password you introduced is wrong.');
+		case 'deleted':
+		    return res.forbidden('Your account has been deleted. Please restore your account.');
+		case 'banned':
+		    return res.forbidden('Your account has been banned.');
+		default:
+		    return res.serverError('Something went wrong.');
+		}
+	    }
 	    return null; // To keep compiler happy.
-	});
+	})(req, res, next);
     },
 
     /**
@@ -107,21 +86,8 @@ module.exports = {
      *     - Content: string
      */
     logout: function (req, res) {
-	if (!req.session.userId)
-	    return res.redirect('/');
-
-	User.findOne(req.session.userId, function foundUser(err, createdUser){
-	    if (err)
-		return res.negotiate(err);
-	    
-	    if (!createdUser){
-		sails.log.verbose('Session refers to a user who no longer exists');
-		return res.redirect('/');
-	    }
-	    req.session.userId = null; // <--- removes the user session.
-	    return res.redirect('/');
-	});
-	return null; // To keep compiler happy.
+	delete req.logout();
+	return res.redirect('/');
     },
 
     /* ===================
@@ -151,6 +117,9 @@ module.exports = {
      *                 updatedAt: string,
      *                 id: string}
      * + Error Response:
+     *     - Code: 403
+     *     - Content: string
+     *     OR 
      *     - Code: 409
      *     - Content: string
      *     OR
@@ -207,33 +176,40 @@ module.exports = {
 	    User.create(options).exec(function(err, createdUser) {
 		if (err){
 		    // Manage the errors from Mongo DB.
-		    if (err.invalidAttributes &&                               //  \
-			err.invalidAttributes.userName &&                      //  | <---- Seriously??? WTH!!!
-			err.invalidAttributes.userName[0] &&                   //  |
-			err.invalidAttributes.userName[0].rule === 'unique') { //  /
-			// This response is wrapped in a custom response defined in ~/api/responses/alreadyInUse.js
-			/*return res.send(409, 'Username is already taken by another user. Please try again.');
-			 }
-			 return res.negotiate(err);*/
-			return res.alreadyInUse(err); // this is equivalent to the previous two lines.
+		    if (err.invalidAttributes &&
+			err.invalidAttributes.userName &&
+			err.invalidAttributes.userName[0] &&
+			err.invalidAttributes.userName[0].rule === 'unique') {
+			// This uses the response defined in ~/api/responses/alreadyInUse.js
+			return res.alreadyInUse(err);
 		    }
 		};
-		req.session.userId = createdUser.id;  // <--- authenticates the user.
-		return res.json(createdUser);
+
+		// Authenticates the user
+		passport.authenticate('local', function (err, user, response){
+		    if (err)
+			return res.negotiate(err);
+		    if (user)
+			return res.json(user);
+		    return res.serverError('Something went wrong.');
+		})(req, res);
+
+		return null; // To keep compiler happy
+	    }, function(err){
+		// Promise failed, therefeore it fails misserably
+		return res.negotiate(err);
 	    });
-	}, function(err){
-	    // Promise failed, therefeore it fails misserably
-	    return res.negotiate(err);
 	});
 	return null; // To keep compiler happy.
     },
+			   
 
     /**
      * RETRIEVE ONE USER PROFILE
      *   Custom retrieve profile action (overrides the blueprint findOne action).
      *   It retrieves an specific user record from the database.
      *
-     * + URL: /user/profile/:id
+     * + URL: /user/profile/
      * + Method: GET
      * + URL Params: Required
      *               id=string
@@ -251,11 +227,14 @@ module.exports = {
      *     - Code: 400
      *     - Content: string
      *     OR
+     *     - Code: 403
+     *     - Content: string
+     *     OR 
      *     - Code: 500
      *     - Content: string
      */
     profile: function(req, res) {
-	User.findOne(req.session.userId).exec(function foundUser(err, user) {
+	User.findOne(req.session.passport.user).exec(function foundUser(err, user) {
 	    if (err)
 		return res.negotiate(err);
 	    if (!user)
@@ -290,6 +269,9 @@ module.exports = {
      *     - Code: 400
      *     - Content: string
      *     OR
+     *     - Code: 403
+     *     - Content: string
+     *     OR 
      *     - Code: 500
      *     - Content: string
      */
@@ -314,7 +296,7 @@ module.exports = {
      *   Soft-delete profile action (overrides the blueprint update action).
      *   It updates the deleted attribute to 'true' for a particular user.
      *
-     * + URL: /user/:id
+     * + URL: /remove-profile/
      * + Method: DELETE
      * + URL Params: Required
      *               id=string
@@ -326,15 +308,15 @@ module.exports = {
      *     - Code: 400
      *     - Content: string
      *     OR
+     *     - Code: 403
+     *     - Content: string
+     *     OR 
      *     - Code: 500
      *     - Content: string
      */
     removeProfile: function(req, res){
-	/*if (!req.session.userId)
-	    return res.badRequest('id is a required parameter.');*/
-
 	User.update({
-	    id: req.session.userId
+	    id: req.session.passport.user
 	},{
 	    deleted: true
 	}, function (err, removedUser){
@@ -342,8 +324,9 @@ module.exports = {
 		return res.negotiate(err);
 	    if (removedUser.length === 0)
 		return res.notFound();
-	    req.session.userId = null; // <--- removes the user session.
-	    return res.send(200,removedUser);
+	    //req.session.passport.user = null; // <--- removes the user session.
+	    delete req.logout();
+	    return res.json(removedUser);
 	});
 	return null; // To keep compiler happy
     },
@@ -353,7 +336,7 @@ module.exports = {
      *   Restore soft deleted profile action (overrides the blueprint update action).
      *   It updates the deleted attribute to 'false' for a particular user.
      *
-     * + URL: /user/restoreProfile
+     * + URL: /user/restore-profile
      * + Method: PUT
      * + URL Params: None
      * + Data Params: {userName: string,
@@ -365,6 +348,9 @@ module.exports = {
      *     - Code: 400
      *     - Content: string
      *     OR
+     *     - Code: 403
+     *     - Content: string
+     *     OR 
      *     - Code: 500
      *     - Content: string
      */
@@ -394,7 +380,7 @@ module.exports = {
 		User.update({id: user.id}, {deleted: false}, function(err, updatedUser) {
 		    if (err)
 			return res.negotiate(err);
-		    req.session.userId = user.id;  // <--- Authenticates the user.
+		    req.session.passport.user = user.id;  // <--- Authenticates the user.
 		    return res.json(updatedUser);
 		});
 		return null; // To keep compiler happy
@@ -410,14 +396,12 @@ module.exports = {
      * UPDATE USER PROFILE
      *   It updates the profile of a particular user.
      *
-     * + URL: /user/updateProfile
+     * + URL: /user/update-profile
      * + Method: PUT
      * + URL Params: None
      * + Data Params: {id: string,
      *                 firstName: string,
-     *                 lastName: string,
-     *                 userName: string,
-     *                 password: string}
+     *                 lastName: string}
      * + Success Response:
      *     - Code: 200
      *     - Content:
@@ -425,12 +409,15 @@ module.exports = {
      *     - Code: 400
      *     - Content: string
      *     OR
+     *     - Code: 403
+     *     - Content: string
+     *     OR 
      *     - Code: 500
      *     - Content: string
      */
     updateProfile: function(req, res) {
 	User.update({
-	    id: req.session.userId
+	    id: req.session.passport.user
 	}, {
 	    firstName: req.param('firstName'),
 	    lastName: req.param('lastName')
@@ -446,7 +433,7 @@ module.exports = {
      * CHANGE USER PASSWORD
      *   It changes the password of a particular user.
      *
-     * + URL: /user/changePassword
+     * + URL: /user/change-password
      * + Method: PUT
      * + URL Params: None
      * + Data Params: {id: string,
@@ -458,6 +445,9 @@ module.exports = {
      *     - Code: 400
      *     - Content: string
      *     OR
+     *     - Code: 403
+     *     - Content: string
+     *     OR 
      *     - Code: 500
      *     - Content: string
      */
@@ -482,7 +472,11 @@ module.exports = {
 
 	encPassword.then(function(hash) {
 	    // Promise has been successful Therefore, it sends data to Mongo DB
-	    User.update({id: req.session.userId}, {encryptedPassword: hash}).exec(function(err, updatedUser) {
+	    User.update({
+		id: req.session.passport.user
+	    },{
+		encryptedPassword: hash
+	    }).exec(function(err, updatedUser) {
 		if (err)
 		    return res.negotiate(err);
 		return res.json(updatedUser);
@@ -502,7 +496,7 @@ module.exports = {
      * ADMIN USERS
      *   Lists all the users in the database.
      *
-     * + URL: /user/adminUsers
+     * + URL: /user/admin-users
      * + Method: GET
      * + URL Params: None
      * + Data Params: None
@@ -513,6 +507,9 @@ module.exports = {
      *     - Code: 400
      *     - Content: string
      *     OR
+     *     - Code: 403
+     *     - Content: string
+     *     OR 
      *     - Code: 500
      *     - Content: string
      */
@@ -529,7 +526,7 @@ module.exports = {
      * UPDATE ADMIN FLAG
      *   It changes the admin attribute for a particular user.
      *
-     * + URL: /user/updateAdmin
+     * + URL: /user/update-admin
      * + Method: PUT
      * + URL Params: None
      * + Data Params: {id: string,
@@ -541,6 +538,9 @@ module.exports = {
      *     - Code: 400
      *     - Content: string
      *     OR
+     *     - Code: 403
+     *     - Content: string
+     *     OR 
      *     - Code: 500
      *     - Content: string
      */
@@ -560,7 +560,7 @@ module.exports = {
      * UPDATE BANNED FLAG
      *   It changes the banned attribute for a particular user.
      *
-     * + URL: /user/updateBanned
+     * + URL: /user/update-banned
      * + Method: PUT
      * + URL Params: None
      * + Data Params: {id: string,
@@ -591,7 +591,7 @@ module.exports = {
      * UPDATE DELETED FLAG
      *   It changes the deleted attribute for a particular user.
      *
-     * + URL: /user/updateDeleted
+     * + URL: /user/update-deleted
      * + Method: PUT
      * + URL Params: None
      * + Data Params: {id: string,

@@ -63,7 +63,7 @@ describe('UserController', function() {
 	});
     });
     
-    describe('PUT /user/removeProfile', function() {
+    describe('PUT /user/remove-profile', function() {
 	it('can successfully set user.deleted to false', function (done) {
 	    var user;
 	    User.create({
@@ -74,7 +74,7 @@ describe('UserController', function() {
 	    }).then(function (_user) {
 		var user = _user;
 		request(sails.hooks.http.app)
-		    .delete('/user/removeProfile/')
+		    .delete('/user/remove-profile/')
 		    .expect(200)
 		    .then(function (res) {
 			var data = res.body;
@@ -85,7 +85,7 @@ describe('UserController', function() {
 	});
     });
 
-    describe('DELETE /user/:id', function(){
+    /*describe('DELETE /user/:id', function(){
 	it('can sucessuflly set user as banned', function(done){
             var user;
             User.create({
@@ -106,5 +106,5 @@ describe('UserController', function() {
 		    .catch(done);
             });
 	});
-    });
+    });*/
 });

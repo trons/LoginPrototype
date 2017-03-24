@@ -22,6 +22,8 @@ module.exports.http = {
   ****************************************************************************/
 
   middleware: {
+      passportInit: require('passport').initialize(), // <---- Added for Passport
+      passportSession: require('passport').session(), // <---- Added for Passport
 
   /***************************************************************************
   *                                                                          *
@@ -29,24 +31,26 @@ module.exports.http = {
   * router is invoked by the "router" middleware below.)                     *
   *                                                                          *
   ***************************************************************************/
-
-    // order: [
-    //   'startRequestTimer',
-    //   'cookieParser',
-    //   'session',
-    //   'myRequestLogger',
-    //   'bodyParser',
-    //   'handleBodyParserError',
-    //   'compress',
-    //   'methodOverride',
-    //   'poweredBy',
-    //   '$custom',
-    //   'router',
-    //   'www',
-    //   'favicon',
-    //   '404',
-    //   '500'
-    // ],
+      
+      order: [
+	  'startRequestTimer',
+	  'cookieParser',
+	  'session',
+	  'passportInit',      // <---- Added for Passport
+	  'passportSession',   // <---- Added for Passport
+	  'myRequestLogger',
+	  'bodyParser',
+	  'handleBodyParserError',
+	  'compress',
+	  'methodOverride',
+	  'poweredBy',
+	  '$custom',
+	  'router',
+	  'www',
+	  'favicon',
+	  '404',
+	  '500'
+      ]
 
   /****************************************************************************
   *                                                                           *
