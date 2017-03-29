@@ -21,54 +21,28 @@ module.exports.bootstrap = function(cb) {
 	    return cb();
 	};
 
-	/*
-	 This snippet of code is here for illustrative purposes only. It shows how to use a
-	 function on this bootstrap function before lifting the sails server. In particular,
-	 the code would search some videos on youtube (cf. Sails.js in Action Ch. 5).
+	// Create an administrator user for test purposes
+	User.create({
+	    firstName: "John",
+	    lastName: "Doe",
+	    userName: "admin",
+	    encryptedPassword: "$2a$10$bzMEjvt9ks0fL0pf2qqWZej3XyusAnjbpKxDqkQq76C6Ws8pX5gBG", // 123456
+	    deleted: false,
+	    banned: false,
+	    admin: true
+	}).exec({
+	    error: function (err) {
+		console.log('ERROR: ' + JSON.stringify(err, null, 2));
+		return cb(err);
+	    },
+	    success: function (data) {
+		return cb();
+	    }
+	});
 
-	 It also shows the use of the ~/config/local.js configuration file (where ~ is the
-	 root directory for the project). This is a local file that is used only in development
-	 and is not included on the git repository.
-
-	var Youtube = require('machinepack-youtube');
-	
-	// List Youtube videos with match the specivied search query.
-	Youtube.searchVideos({query: 'grumpy cat',
-			      // apiKey: 'PLACE YOUR GOOGLE API KEY HERE', // If API key IS NOT in config/local.js
-			      apiKey: sails.config.google.apiKey // If API key IS in config/local.js
-			      limit: 15}).exec({
-				  // An unexpected error occurred.
-				  error: function(err) {
-				      console.log('ERROR : ', err);
-				      return cb(err);
-				  },
-				  // OK
-				  success: function (results) {
-				      // This foreach loop follows the book example to clean the result obtained
-				      _.each(results, function(result) {
-					  result.src = 'https://www.youtube.com/embed/' + result.id;
-					  delete result.description;
-					  delete result.publishedAt;
-					  delete result.id;
-					  delete result.url;
-				      });
-
-				      // It creates a record (puts the 
-				      User.create(results).exec(function (err, resultsCreated) {
-					  if (err) {
-					      console.log('ERROR: ', err);
-					      return cb(err);
-					  }
-
-					  console.log('result: ', results);
-					  return cb();
-				      });
-				  }
-			      });
-	 */	
-
-	console.log('There are no user records.');
-	return cb();
+	//console.log('There are no user records.');
+	//return cb();
+	return null; // To keep compiler happy.
     });
 
     // It's very important to trigger this callback method when you are finished

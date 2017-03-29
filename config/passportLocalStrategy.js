@@ -1,11 +1,23 @@
 'use strict';
-
+/**
+ * @fileoverview
+ * This file implements the local strategy for users authentication using the
+ * Passport library. This is based on an example by Ghadeer Rahhal that can
+ * be found at https://www.ghadeer.io/sails-application-passportjs/
+ *
+ * @summary Passport local strategy.
+ * @module ./passportLocalStrategy.js
+ * @requires passport.js
+ * @requires passport-local.js
+ * @author Mario Moro Hernández upon an example by Ghadeer Rahhal.
+ * @license None
+ * @version 0.0.alpha
+ */
 /* ======
    IMPORT
    ====== */
 var passport = require('passport'),
-    LocalStrategy = require('passport-local'),
-    bcrypt = require('bcryptjs');
+    LocalStrategy = require('passport-local');
 
 // After passport serialises the user, return the ID.
 passport.serializeUser(function (user, done) {
@@ -14,7 +26,7 @@ passport.serializeUser(function (user, done) {
 
 // Passport deserialises the user by ID and returns the full user object.
 passport.deserializeUser(function (id, done) {
-    User.findOne({id: id}, function (err, user){
+    User.findOne({id: id}, function (err, user) {
 	done(err, user);
     });
 });
@@ -27,16 +39,9 @@ var verifyHandler = function (req, username, password, done) {
 	    // user not found
 	    if (!createdUser) return done(null, false, {message: 'user_not_found'});
 	    // check password
-	    var checkPassword = new Promise(function(resolve, reject) {
-		bcrypt.compare(req.param('password'), createdUser.encryptedPassword, function (err, match){
-		    if (err)
-			return reject(err);
-		    resolve(match);
-		    return null; // To keep compiler happy.
-		});
-	    });
+	    var checkPassword = PasswordsService.compare(req.param('password'), createdUser.encryptedPassword);
 
-	    checkPassword.then(function (match){
+	    checkPassword.then(function (match) {
 		// Promise was successful
 		if (!match)
 		    return done(null, false, {message: 'wrong_password'});
@@ -48,14 +53,15 @@ var verifyHandler = function (req, username, password, done) {
 		    return done(null, false, {message: 'banned'});
 
 		// Login user
-		req.login(createdUser, function (err){
-		    if (err) return done(null, false, {message: err});
+		req.login(createdUser, function (err) {
+		    if (err)
+			return done(null, false, {message: err});
 		    // Respond with 200 OK status
-		    return done(null, createdUser, {message: 'Successfully logged in.'});
+		    return done(null, createdUser, {message: 'logged_in'});
 		});
 
 		return null;
-	    }, function (err){
+	    }).catch(function (err) {
 		// Promise failed, therefeore it fails misserably
 		return done(err);
 	    });

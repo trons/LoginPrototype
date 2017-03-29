@@ -1,3 +1,4 @@
+'use-strict';
 /**
  * UserController
  *
@@ -8,12 +9,6 @@
 /* ======
    IMPORT
    ====== */
-/*
- bcrypt encryption module to encrypt the password. The example in the book
- imports a wrapper to this library. Here we do the same but simpler using a
- promise.
- */
-var bcrypt = require('bcryptjs');
 var passport = require('passport');
 
 /* ======
@@ -42,7 +37,7 @@ module.exports = {
      *     - Code: 500
      *     - Content: string
      */
-    login: function(req, res, next){
+    login: function (req, res, next){
 	passport.authenticate('local', function (err, user, response){
 	    if (err)
 		return res.negotiate(err);
@@ -51,9 +46,9 @@ module.exports = {
 	    if (!user){
 		switch(response.message){
 		case 'user_not_found':
-		    return res.notFound('The username you introduced is unknown.');
+		    return res.notFound('The username you entered is unknown.');
 		case 'wrong_password':
-		    return res.notFound('The password you introduced is wrong.');
+		    return res.notFound('The password you entered is wrong.');
 		case 'deleted':
 		    return res.forbidden('Your account has been deleted. Please restore your account.');
 		case 'banned':
@@ -62,7 +57,7 @@ module.exports = {
 		    return res.serverError('Something went wrong.');
 		}
 	    }
-	    return null; // To keep compiler happy.
+	    return res.badRequest('The request was malformed.');
 	})(req, res, next);
     },
 
@@ -150,30 +145,20 @@ module.exports = {
 	if (req.param('password').length < 6)
 	    return res.badRequest('Password must be at least 6 characters');
 
-	// Password encryption using a promise and sends data to DB or fail misserably.
-	var passEncryption = new Promise(function(resolve, reject) {
-	    bcrypt.hash(req.param('password'), 10, function(err, hash) {
-		if (err)
-		    return reject(err);
+	// Password encryption using a promise and sends data to DB or fail miserably.
+	var passEncryption = PasswordsService.encrypt(req.param('password'));
 
-		resolve(hash);
-		return null; // To keep compiler happy
-	    });
-	});
-
-	passEncryption.then(function(hash) {
+	passEncryption.then(function (hash) {
 	    // Promise has been successful
 	    var options = {
 		firstName: req.param('firstName'),
 		lastName: req.param('lastName'),
 		userName: req.param('userName'),
-		encryptedPassword: hash,
-		deleted: false,
-		banned: false,
-		admin: false
+		encryptedPassword: hash
+		// admin, deleted, and banned attributes are set to false by default (cf. ~/api/models/User.js)
 	    };
 	    // Therefore, it sends data to Mongo DB
-	    User.create(options).exec(function(err, createdUser) {
+	    User.create(options).exec(function (err, createdUser) {
 		if (err){
 		    // Manage the errors from Mongo DB.
 		    if (err.invalidAttributes &&
@@ -185,20 +170,20 @@ module.exports = {
 		    }
 		};
 
-		// Authenticates the user
+		// Authenticates the user (Passport)
 		passport.authenticate('local', function (err, user, response){
 		    if (err)
 			return res.negotiate(err);
-		    if (user)
+		    if (user && response.message === 'logged_in')
 			return res.json(user);
 		    return res.serverError('Something went wrong.');
 		})(req, res);
 
 		return null; // To keep compiler happy
-	    }, function(err){
-		// Promise failed, therefeore it fails misserably
-		return res.negotiate(err);
 	    });
+	}).catch(function (err) {
+	    // Promise failed. Therefeore, it fails miserably
+	    return res.negotiate(err);
 	});
 	return null; // To keep compiler happy.
     },
@@ -233,7 +218,7 @@ module.exports = {
      *     - Code: 500
      *     - Content: string
      */
-    profile: function(req, res) {
+    profile: function (req, res) {
 	User.findOne(req.session.passport.user).exec(function foundUser(err, user) {
 	    if (err)
 		return res.negotiate(err);
@@ -275,7 +260,7 @@ module.exports = {
      *     - Code: 500
      *     - Content: string
      */
-    delete: function(req, res) {
+    delete: function (req, res) {
 	if (!req.param('id'))
 	    return res.badRequest('id is a required parameter.');
 
@@ -298,9 +283,8 @@ module.exports = {
      *
      * + URL: /remove-profile/
      * + Method: DELETE
-     * + URL Params: Required
-     *               id=string
-     * + Data Params :None
+     * + URL Params: None
+     * + Data Params: None
      * + Success Response:
      *     - Code: 200
      *     - Content:
@@ -314,7 +298,7 @@ module.exports = {
      *     - Code: 500
      *     - Content: string
      */
-    removeProfile: function(req, res){
+    removeProfile: function (req, res){
 	User.update({
 	    id: req.session.passport.user
 	},{
@@ -324,10 +308,11 @@ module.exports = {
 		return res.negotiate(err);
 	    if (removedUser.length === 0)
 		return res.notFound();
-	    //req.session.passport.user = null; // <--- removes the user session.
+	    // Removes the user session.
 	    delete req.logout();
 	    return res.json(removedUser);
 	});
+
 	return null; // To keep compiler happy
     },
 
@@ -354,40 +339,43 @@ module.exports = {
      *     - Code: 500
      *     - Content: string
      */
-    restoreProfile: function(req, res) {
+    restoreProfile: function (req, res) {
 	User.findOne({userName: req.param('userName')}).exec(function foundUser(err, user) {
 	    if (err)
 		return res.negotiate(err);
 	    if (!user)
 		return res.notFound();
 
-	    var checkUser = new Promise(function(resolve, reject) {
-		bcrypt.compare(req.param('password'), user.encryptedPassword, function(err, match) {
-		    if (err)
-			return reject(err);
-		
-		    resolve(match);
-		    return null; // To keep compiler happy.
-		});
-	    });
+	    var checkPassword = PasswordsService.compare(req.param('password'), user.encryptedPassword);
 	    
-	    checkUser.then(function(match) {
+	    checkPassword.then(function (match) {
 		// Promise was successful
 		if (!match){
 		    return res.notFound();
 		}
 		
-		User.update({id: user.id}, {deleted: false}, function(err, updatedUser) {
+		User.update({id: user.id}, {deleted: false}, function (err, updatedUser) {
 		    if (err)
 			return res.negotiate(err);
-		    req.session.passport.user = user.id;  // <--- Authenticates the user.
-		    return res.json(updatedUser);
+
+		    // Authenticates the user.
+		    req.session.passport.user = user.id;
+		    passport.authenticate('local', function (err, user, response){
+			if (err)
+			    return res.negotiate(err);
+			if (user && response.message === 'logged_in')
+			    return res.json(user);
+			return res.serverError('Something went wrong.');
+		    })(req, res);
+
+		    return null; // To keep compiler happy
 		});
 		return null; // To keep compiler happy
-	    }, function (err) {
-		// Promise failed
+	    }).catch(function (err) {
+		// Promise failed. Therefeore, it fails miserably.
 		return res.negotiate(err);
 	    });
+
 	    return null; // To keep compiler happy
 	});
     },
@@ -415,7 +403,7 @@ module.exports = {
      *     - Code: 500
      *     - Content: string
      */
-    updateProfile: function(req, res) {
+    updateProfile: function (req, res) {
 	User.update({
 	    id: req.session.passport.user
 	}, {
@@ -451,7 +439,7 @@ module.exports = {
      *     - Code: 500
      *     - Content: string
      */
-    changePassword: function(req, res) {
+    changePassword: function (req, res) {
 	if (_.isUndefined(req.param('password')))
 	    return res.badRequest('A password is required.');
 
@@ -459,30 +447,21 @@ module.exports = {
 	    return res.badRequest('Pasword must be at least 6 characters long.');
 
 	// Encrypt password as before
-	var encPassword = new Promise(function(resolve, reject) {
-	    bcrypt.hash(req.param('password'), 10, function(err, hash) {
-		if (err)
-		    return reject(err);
+	var encPassword = PasswordsService(req.param('password'));
 
-		resolve(hash);
-
-		return null; // To keep compiler happy
-	    });
-	});
-
-	encPassword.then(function(hash) {
-	    // Promise has been successful Therefore, it sends data to Mongo DB
+	encPassword.then(function (hash) {
+	    // Promise has been successful. Therefore, it sends data to Mongo DB
 	    User.update({
 		id: req.session.passport.user
 	    },{
 		encryptedPassword: hash
-	    }).exec(function(err, updatedUser) {
+	    }).exec(function (err, updatedUser) {
 		if (err)
 		    return res.negotiate(err);
 		return res.json(updatedUser);
 	    });
-	}, function(err){
-	    // Promise failed, therefeore it fails misserably
+	}).catch(function (err){
+	    // Promise failed. Therefeore, it fails miserably
 	    return res.negotiate(err);
 	});
 
@@ -513,8 +492,8 @@ module.exports = {
      *     - Code: 500
      *     - Content: string
      */
-    adminUsers: function(req, res) {
-	User.find().exec(function(err, users){
+    adminUsers: function (req, res) {
+	User.find().exec(function (err, users){
 	    if (err)
 		return res.negotiate(err);
 
@@ -547,7 +526,7 @@ module.exports = {
     updateAdmin: function (req, res) {
 	User.update(req.param('id'), {
 	    admin:req.param('admin')
-	}).exec(function(err, update){
+	}).exec(function (err, update){
 	    if (err)
 		return res.negotiate(err);
 	    res.ok('OK');
@@ -578,7 +557,7 @@ module.exports = {
     updateBanned: function (req, res) {
 	User.update(req.param('id'), {
 	    banned: req.param('banned')
-	}).exec(function(err, update){
+	}).exec(function (err, update){
 	    if (err)
 		return res.negotiate(err);
 	    res.ok('OK');
@@ -609,7 +588,7 @@ module.exports = {
     updateDeleted: function (req, res) {
 	User.update(req.param('id'), {
 	    deleted: req.param('deleted')
-	}).exec(function(err, update){
+	}).exec(function (err, update){
 	    if (err)
 		return res.negotiate(err);
 	    res.ok('OK');

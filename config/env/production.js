@@ -16,9 +16,18 @@ module.exports = {
    * Set the default database connection for models in the production        *
    * environment (see config/connections.js and config/models.js )           *
    ***************************************************************************/
+  // This is an example of setting up a Mongo connection in production.
 
   // models: {
-  //   connection: 'someMysqlServer'
+  //	connection: 'someMongodb'
+  // },
+
+  // connections: {
+  //	someMongoDB: {
+  //        adapter: 'sails-mongo',
+  //	    url: process.env.DATABASE_URL,
+  //	    ssl: true
+  //	}
   // },
 
   /***************************************************************************
