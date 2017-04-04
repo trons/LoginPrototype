@@ -31,6 +31,19 @@ module.exports = {
   // },
 
   /***************************************************************************
+   * Set the Redis to Go for sessions and sockets (if required)              *
+   ***************************************************************************/
+  //  session : {
+  //	adapter 'redis',
+  //	url: process.env.REDISTOGO_URL
+  //  },
+
+  //  sockets: {
+  //	adapter: 'socket.io-redis',
+  //	url: process.env.REDISTOGO_URL
+  //  },
+
+  /***************************************************************************
    * Set the port in the production environment to 80                        *
    ***************************************************************************/
 

@@ -55,6 +55,16 @@ try {
   }
 }
 
+// Start server (PRODUCTION)
+/* This prevents running Grunt tasks on startup, so there are no risks of
+   timeouts or other dodgy problems derived from there. */
+var config = rc('sails');
+if (process.env.NODE_ENV === 'production' || process.env.nogrunt) {
+    config.hooks = config.hooks || {};
+    config.hooks.grunt = false;
+}
 
-// Start server
-sails.lift(rc('sails'));
+sails.lift(config);
+
+// Start server (DEFAULT)
+//sails.lift(rc('sails'));

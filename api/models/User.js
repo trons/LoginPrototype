@@ -9,7 +9,7 @@ module.exports = {
 
   connection: 'localMongodb', // <---- This must match the name on connections.js
 
-  migrate: 'drop', // <---- This will drop any existing schema on the server restart
+  //migrate: 'drop', // <---- This will drop any existing schema on the server restart
 
   attributes: {
       firstName: {

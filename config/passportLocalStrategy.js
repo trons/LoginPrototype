@@ -26,7 +26,7 @@ passport.serializeUser(function (user, done) {
 
 // Passport deserialises the user by ID and returns the full user object.
 passport.deserializeUser(function (id, done) {
-    User.findOne({id: id}, function (err, user) {
+    User.findById(id, function (err, user) { // <---- changed to findById to prevent deserialize error with redis.
 	done(err, user);
     });
 });
