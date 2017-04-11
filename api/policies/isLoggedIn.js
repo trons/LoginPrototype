@@ -5,7 +5,10 @@
  */
 
 module.exports = function isLoggedIn(req, res, next) {
-    if (req.isAuthenticated())
+    //console.log('req.session.passport.user = ' + req.session.passport.user);
+    var auth = isAuthorised(req.get('Authorization'));
+    console.log('auth = ' + auth);
+    if (req.isAuthenticated() || auth)
 	return next();
     
     if (req.wantsJSON)
@@ -13,3 +16,26 @@ module.exports = function isLoggedIn(req, res, next) {
     
     return res.redirect('/');
 };
+
+
+function isAuthorised(JWT){
+    var auth = JWTService.verifyToken(JWT);
+    if (!auth.error)
+	return true;
+    return false;
+};
+
+/*
+// Asynchronous version of isAuthorised. It doesn't work because of a race condition.
+function isAuthorised(JWT){
+    JWTService.verifyTokenAsync(JWT)
+	.then(function(err) {
+	    if (err) return false;
+	    return true;
+	})
+	.catch(
+	    function (){
+		return false;
+	    });
+};
+*/

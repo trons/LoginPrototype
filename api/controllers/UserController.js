@@ -38,7 +38,7 @@ module.exports = {
      *     - Content: string
      */
     login: function (req, res, next){
-	passport.authenticate('local', function (err, user, response){
+	passport.authenticate('local', {session:false}, function (err, user, response) {
 	    if (err)
 		return res.negotiate(err);
 	    if (user)
