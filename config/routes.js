@@ -41,6 +41,7 @@ module.exports.routes = {
 
     'GET /user/admin-users': 'UserController.adminUsers',
     'GET /user/profile': 'UserController.profile',
+    'GET /user/verify-profile': 'UserController.verifyProfile',
 
     'POST /user/signup': 'UserController.signup',
     'PUT /user/remove-profile': 'UserController.removeProfile',

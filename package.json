@@ -33,7 +33,8 @@
     "rc": "1.0.1",
     "sails": "~0.12.12",
     "sails-disk": "~0.10.9",
-    "sails-mongo": "^0.12.2"
+    "sails-mongo": "^0.12.2",
+    "sendgrid": "^5.0.0"
   },
   "scripts": {
     "debug": "node debug app.js",

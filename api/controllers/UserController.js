@@ -38,7 +38,7 @@ module.exports = {
      *     - Content: string
      */
     login: function (req, res, next){
-	passport.authenticate('local', {session:false}, function (err, user, response) {
+	passport.authenticate('local', function (err, user, response) {
 	    if (err)
 		return res.negotiate(err);
 	    if (user)
@@ -53,6 +53,8 @@ module.exports = {
 		    return res.forbidden('Your account has been deleted. Please restore your account.');
 		case 'banned':
 		    return res.forbidden('Your account has been banned.');
+		case 'not-verified':
+		    return res.forbidden('Your account is not verified.');
 		default:
 		    return res.serverError('Something went wrong.');
 		}
@@ -138,6 +140,13 @@ module.exports = {
 	if (!_.isString(req.param('userName')) || req.param('userName').match(/[^a-z0-9]/i))
 	    return res.badRequest('Invalid username: must consist of numbers and letters only.');
 
+	// email
+	if (_.isUndefined(req.param('email')))
+	    return res.badRequest ('An email is required');
+
+	if (!_.isString(req.param('email')) || !req.param('email').match(/[a-z0-9!#$%&'*+\/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+\/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?/g))
+	    return res.badRequest('Invalid email');
+
 	// password
 	if (_.isUndefined(req.param('password')))
 	    return res.badRequest('A password is required');
@@ -154,22 +163,35 @@ module.exports = {
 		firstName: req.param('firstName'),
 		lastName: req.param('lastName'),
 		userName: req.param('userName'),
+		email: req.param('email'),
 		encryptedPassword: hash
-		// admin, deleted, and banned attributes are set to false by default (cf. ~/api/models/User.js)
+		// admin, deleted, banned and verified attributes are false by default (cf. ~/api/models/User.js)
 	    };
 	    // Therefore, it sends data to Mongo DB
-	    User.create(options).exec(function (err, createdUser) {
+	    User.create(options).exec(function (err, user) {
 		if (err){
 		    // Manage the errors from Mongo DB.
-		    if (err.invalidAttributes &&
+		    if ((err.invalidAttributes &&
 			err.invalidAttributes.userName &&
 			err.invalidAttributes.userName[0] &&
-			err.invalidAttributes.userName[0].rule === 'unique') {
+			err.invalidAttributes.userName[0].rule === 'unique') ||
+			(err.invalidAttributes &&
+			err.invalidAttributes.email &&
+			err.invalidAttributes.email[0] &&
+			err.invalidAttributes.email[0].rule === 'unique')) { 
 			// This uses the response defined in ~/api/responses/alreadyInUse.js
 			return res.alreadyInUse(err);
 		    }
 		};
 
+		//generate email verification link and send it by email
+		VerificationEmailService.generate(user).then(function (string){
+		    return res.ok(string);
+		}).catch(function(err) {
+		    return res.negotiate(err);
+		});
+		
+		/*
 		// Authenticates the user (Passport)
 		passport.authenticate('local', function (err, user, response){
 		    if (err)
@@ -178,6 +200,7 @@ module.exports = {
 			return res.json(user);
 		    return res.serverError('Something went wrong.');
 		})(req, res);
+		 */
 
 		return null; // To keep compiler happy
 	    });
@@ -219,6 +242,7 @@ module.exports = {
      *     - Content: string
      */
     profile: function (req, res) {
+	//console.log('req.session.passport.user = ' + JSON.stringify(req.user, null,2));
 	User.findOne(req.session.passport.user).exec(function foundUser(err, user) {
 	    if (err)
 		return res.negotiate(err);
@@ -463,6 +487,54 @@ module.exports = {
 	}).catch(function (err){
 	    // Promise failed. Therefeore, it fails miserably
 	    return res.negotiate(err);
+	});
+
+	return null; // To keep compiler happy
+    },
+
+    verifyProfile: function(req,res) {
+	var token = req.param('authorization');
+	var verifiedToken = JWTService.verifyToken(token);
+
+	if (verifiedToken.error && verifiedToken.error.name === 'TokenExpiredError') {
+	    VerificationEmailService.generate({userName: req.param('username'),
+					       firstName: req.param('firstname'),
+					       lastName: req.param('lastName'),
+					       email: req.param('email')})
+		.then(function (string){
+		    return res.ok(string);
+		}).catch(function(err) {
+		    return res.forbidden(err);
+		});
+	}
+
+	if (verifiedToken.error)
+	    return res.forbidden('You are not authorised to perform this action3.');
+
+	User.findOne({userName: verifiedToken.user}).exec(function (err, user) {
+	    if (err)
+		return res.negotiate(err);
+	    if (!user)
+		return res.notFound();
+
+	    User.update({id: user.id}, {verified: true}, function (err, updatedUser) {
+		if (err)
+		    return res.negotiate(err);
+		
+		// Authenticates the user.
+		// req.session['passport']['user'] = user.id;
+		passport.authenticate('local', function (err, user, response){
+			if (err)
+			    return res.negotiate(err);
+		    if (user && response.message === 'logged_in')
+			return res.json(user);
+		    return res.serverError('Something went wrong.');
+		})(req, res);
+
+		return null; // To keep compiler happy
+	    });
+
+	    return null; // To keep compiler happy
 	});
 
 	return null; // To keep compiler happy

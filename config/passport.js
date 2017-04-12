@@ -29,7 +29,7 @@ var passport = require('passport'),
     ExtractJwt = require('passport-jwt').ExtractJwt;
 
 // JWT Configuration
-var SECRET = process.env.tokenSecret || 'mierda';
+var SECRET = process.env.tokenSecret || 'jwt-secret';
 var EXPIRES_IN = 10 * 60;
 var ALGORITHM = 'HS256';
 var ISSUER = 'accounts.examplesoft.com';
@@ -111,12 +111,15 @@ function _verifyLocalHandler(req, username, password, done) {
 		if (user.banned)
 		    return done(null, false, {message: 'banned'});
 
+		if (!user.verified)
+		    return done(null, false, {message: 'not-verified'});
+
 		// Login user
 		req.login(user, function (err) {
 		    if (err)
 			return done(null, false, {message: err});
 		    // Respond with 200 OK status
-		    return done(null, {token: JWTService.issueToken({user: user.userName}, SECRET, DEFAULT_OPTIONS),
+		    return done(null, {token: JWTService.issueToken({user: user.id}, SECRET, DEFAULT_OPTIONS),
 				       user: user}, {message: 'logged_in'});
 		});
 
@@ -133,7 +136,10 @@ function _verifyLocalHandler(req, username, password, done) {
 
 function _verifyJwtHandler(req, jwtPayload, done) {
     process.nextTick(function () {
-	User.findOne({id: jwtPayload.user}).exec(function (err, user) {
+	console.log('in_verfiyJwtHandler process.nextTick(function()');
+	User.findOne({id: jwtPayload.id}).exec(function (err, user) {
+	    console.log('in_verfiyJwtHandler process.nextTick(function()\n'+
+		        'User.findone({id: jwtPayload.id}).exec(function(err, user)');
 	    //handle Mongo DB error
 	    if (err) return done(err);
 	    

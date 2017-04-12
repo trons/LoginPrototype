@@ -23,6 +23,11 @@ module.exports = {
 	  required: 'true', // <---- Forces the attribute to be there
 	  unique: 'true'    // <---- Forces the attribute to be unique (unique validation)
       },
+      email:{
+	  type: 'string',
+	  required: 'true',
+	  unique: 'true'
+      },
       encryptedPassword: {
 	  type: 'string'
       },
@@ -35,6 +40,10 @@ module.exports = {
 	  defaultsTo: 'false'
       },
       banned: {
+	  type: 'boolean',
+	  defaultsTo: 'false'
+      },
+      verified: {
 	  type: 'boolean',
 	  defaultsTo: 'false'
       },

@@ -100,8 +100,7 @@ module.exports = {
 	
 	// validate token
 	try {
-	    var decodedToken = jwt.verify(token, secretOrPublicKey, options);
-	    return decodedToken;
+	    return jwt.verify(token, secretOrPublicKey, options);
 	} catch (err) {
 	    return {error: err};
 	}
@@ -127,8 +126,8 @@ module.exports = {
 	    options = {};
     
 	// validate token
-	return new Promise(function(resolve, reject){
-	    jwt.verify(token, secretOrPublicKey, options, function(err, decodedToken){
+	return new Promise(function (resolve, reject) {
+	    jwt.verify(token, secretOrPublicKey, options, function (err, decodedToken){
 		if (err){
 		    return reject(err);
 		}
