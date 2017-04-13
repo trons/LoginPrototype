@@ -70,8 +70,7 @@ module.exports = {
      * + URL: /logout
      * + Method: GET
      * + URL Params: None
-     * + Data Params: {userName: string,
-     *                 password: string}
+     * + Data Params: None
      * + Success Response:
      *     - Code: 200
      *     - Content:
@@ -492,10 +491,37 @@ module.exports = {
 	return null; // To keep compiler happy
     },
 
+
+    /**
+     * VERIFY PROFILE
+     *   It changes the user attribute 'verified' to true. This means that the
+     *   user registered with a valid email address. If the link is expired, it
+     *   sends a new one to the registered address. Otherwise, it returns a 403
+     *   error.
+     *
+     * + URL: /user/verify-profile
+     * + Method: PUT
+     * + URL Params: Mandatory:
+     *               authorization=string
+     *               username=string
+     *               firstname=string
+     *               lastname=string
+     *               email=string
+     * + Data Params: None
+     * + Success Response:
+     *     - Code: 200
+     *     - Content:
+     * + Error Response:
+     *     - Code: 403
+     *     - Content: string
+     *     OR 
+     *     - Code: 500
+     *     - Content: string
+     */
     verifyProfile: function(req,res) {
 	var token = req.param('authorization');
 	var verifiedToken = JWTService.verifyToken(token);
-
+	
 	if (verifiedToken.error && verifiedToken.error.name === 'TokenExpiredError') {
 	    VerificationEmailService.generate({userName: req.param('username'),
 					       firstName: req.param('firstname'),
@@ -504,12 +530,13 @@ module.exports = {
 		.then(function (string){
 		    return res.ok(string);
 		}).catch(function(err) {
-		    return res.forbidden(err);
+		    return res.negotiate(err);
 		});
+	    return null; // To prevent unhandled promise rejection error
 	}
-
+	
 	if (verifiedToken.error)
-	    return res.forbidden('You are not authorised to perform this action3.');
+	    return res.forbidden('You are not authorised to perform this action.');
 
 	User.findOne({userName: verifiedToken.user}).exec(function (err, user) {
 	    if (err)
@@ -533,10 +560,8 @@ module.exports = {
 
 		return null; // To keep compiler happy
 	    });
-
 	    return null; // To keep compiler happy
 	});
-
 	return null; // To keep compiler happy
     },
 
