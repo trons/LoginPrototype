@@ -23,6 +23,12 @@ module.exports = {
      *                        the receiver user.
      * @return {Promise} - a promise with the result of the sending email operation.
      */
+    /*
+     This function can be more general by adding an expiration parameter and
+     using templates rather than a hard-coded message. However, for the prototype
+     purposes this is fine (we don't have to mess defining the templates in 
+     Sendgrid).
+     */
     generate: function (user) {
 	return new Promise(function (resolve, reject) {
 	    //generate link

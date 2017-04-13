@@ -35,7 +35,7 @@ module.exports = {
 	    });
 	});
     },
-    
+
     /**
      * It compares a plain-text password and an encrypted password using the 
      * bcrytp password hashing algorithm. It returns a promise with a boolean
@@ -52,6 +52,69 @@ module.exports = {
 		if (err) return reject(err);
 		return resolve(match);
 	    });
+	});
+    },
+
+    generatePassword: function (length){
+	const letters = 'abcdefghijklmnopqrstuvwxyz';
+	const digits = '1234567890';
+	const symbols = '!$%&*()+-=_/\|<>';
+	var password = '';
+
+	for (var i = 0; i < length; i++){
+	    switch(Math.floor(Math.random() * 3) + 1){
+	    case 1:
+		var character = letters.charAt(Math.floor(Math.random() * letters.length));
+		if (Math.floor(Math.random() * 2) === 0){
+		    password += character.toUpperCase();
+		    break;
+		}
+		password += character;
+		break;
+	    case 2:
+		password += digits.charAt(Math.floor(Math.random() * digits.length));
+		break;
+	    case 3:
+		password += symbols.charAt(Math.floor(Math.random() * symbols.length));
+		break;
+	    default:
+		password += '£';
+	    }
+	}
+
+	return password;
+    },
+
+    /*
+     This is not needed really. It can be done with the generate function from the
+     VerificationEmailService.js (cf. the comment there for more details).
+     */
+    sendMail: function (user){
+	return new Promise(function (resolve, reject) {
+	    var token = JWTService.issueToken({user: user.userName}, // payload
+					      undefined, // secret (undefined, so the service uses the default)
+					      {algorithm: sails.config.jwtSettings.algorithm, // options
+					       expiresIn: 5 * 60, // <---- Link expires in 5 minutes
+					       issuer: sails.config.jwtSettings.issuer,
+					       audience: sails.config.jwtSettings.audience});
+	    
+	    var link = 'http://localhost:1337/user/reset-password/' + token;
+	    
+	    // Send verification email
+	    SendgridService.send({
+		to: [{name: user.firstName + ' ' + user.lastName, email: user.email}],
+		from: {name : 'admin', email : 'noreply@someservice.ml'},
+		subject: 'Password reset',
+		body: {text: '<H1>Reset your password</H1><br>' +
+		       '<p>We received a request to reset your password.<br><br>' +
+		       'If it was not you, please ignore this email.<br><br> ' + 
+		       'If you want to reset your password, please click on this link:<br>' +
+		       link + '</p>',
+		       format: 'html'}
+	    }, function(err, data) {
+		if (err) return reject(err);
+		return resolve('Sent verification link to the specified email account');
+	    });	
 	});
     }
 };

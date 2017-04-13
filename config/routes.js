@@ -43,6 +43,13 @@ module.exports.routes = {
     'GET /user/profile': 'UserController.profile',
     'GET /user/verify-profile': 'UserController.verifyProfile',
 
+    // Reset password in one step
+    'GET /user/reset-password': 'UserController.resetPassword',
+
+    // Reset password in two steps
+    'GET /user/request-reset-password': 'UserController.resetPasswordRequest',
+    'GET /user/reset-password/:token': 'UserController.resetPasswordWithToken',
+
     'POST /user/signup': 'UserController.signup',
     'PUT /user/remove-profile': 'UserController.removeProfile',
     'PUT /user/restore-profile': 'UserController.restoreProfile',

@@ -209,7 +209,105 @@ module.exports = {
 	});
 	return null; // To keep compiler happy.
     },
+
+
+   /**
+     * VERIFY PROFILE
+     *   It changes the user attribute 'verified' to true. This means that the
+     *   user registered with a valid email address. If the link is expired, it
+     *   sends a new one to the registered address. Otherwise, it returns a 403
+     *   error.
+     *
+     * + URL: /user/verify-profile
+     * + Method: PUT
+     * + URL Params: Mandatory:
+     *               authorization=string
+     *               username=string
+     *               firstname=string
+     *               lastname=string
+     *               email=string
+     * + Data Params: None
+     * + Success Response:
+     *     - Code: 200
+     *     - Content:
+     * + Error Response:
+     *     - Code: 400
+     *     - Content: string
+     *     OR
+     *     - Code: 403
+     *     - Content: string
+     *     OR 
+     *     - Code: 500
+     *     - Content: string
+     */
+    verifyProfile: function(req,res) {
+	// request parameters validation
+	if (!_.isString(req.param('authorization')))
+	    return res.badRequest('A valid authorization token is required.');
+
+	if (!_.isString(req.param('username')))
+	    return res.badRequest('A valid username is required.');
+
+	if (!_.isString(req.param('firstname')))
+	    return res.badRequest('A valid firstname is required.');
+
+	if (!_.isString(req.param('lastname')))
+	    return res.badRequest('A valid lastname is required.');
 			   
+	// verification logic
+	var token = req.param('authorization');
+	var verifiedToken = JWTService.verifyToken(token);
+	
+	if (verifiedToken.error && verifiedToken.error.name === 'TokenExpiredError') {
+	    VerificationEmailService.generate({userName: req.param('username'),
+					       firstName: req.param('firstname'),
+					       lastName: req.param('lastName'),
+					       email: req.param('email')})
+		.then(function (string){
+		    return res.ok(string);
+		}).catch(function(err) {
+		    return res.negotiate(err);
+		});
+	    return null; // To prevent unhandled promise rejection error
+	}
+	
+	if (verifiedToken.error)
+	    return res.forbidden('You are not authorised to perform this action.');
+	
+	User.update({userName: verifiedToken.user},
+		    {verified: true}).exec(function (err, updatedUser){
+			if (err) return res.negotiate(err);
+			return res.ok('verified email');			    
+		    });
+	/*
+	User.findOne({userName: verifiedToken.user}).exec(function (err, user) {
+	    if (err)
+		return res.negotiate(err);
+	    if (!user)
+		return res.notFound();
+
+	    User.update({id: user.id}, {verified: true}, function (err, updatedUser) {
+		if (err)
+		    return res.negotiate(err);
+		
+		// Authenticates the user.
+		// req.session['passport']['user'] = user.id;
+		passport.authenticate('local', function (err, user, response){
+			if (err)
+			    return res.negotiate(err);
+		    if (user && response.message === 'logged_in')
+			return res.json(user);
+		    return res.serverError('Something went wrong.');
+		})(req, res);
+
+		return null; // To keep compiler happy
+	    });
+	    return null; // To keep compiler happy
+	});
+	 */
+	return null; // To keep compiler happy
+    },			   
+
 
     /**
      * RETRIEVE ONE USER PROFILE
@@ -251,6 +349,7 @@ module.exports = {
 		firstName: user.firstName,
 		lastName: user.lastName,
 		userName: user.userName,
+		email: user.email,
 		deleted: user.deleted,
 		admin: user.admin,
 		banned: user.banned,
@@ -259,6 +358,7 @@ module.exports = {
 	    return res.json(options);
 	});
     },
+
 
     /**
      * DELETE USER PROFILE
@@ -299,6 +399,7 @@ module.exports = {
 	return null; // To keep compiler happy
     },
 
+
     /**
      * SOFT DELETE USER PROFILE
      *   Soft-delete profile action (overrides the blueprint update action).
@@ -338,6 +439,7 @@ module.exports = {
 
 	return null; // To keep compiler happy
     },
+
 
     /**
      * RESTORE SOFT-DELETED USER PROFILE
@@ -403,6 +505,7 @@ module.exports = {
 	});
     },
 
+
     /**
      * UPDATE USER PROFILE
      *   It updates the profile of a particular user.
@@ -440,6 +543,7 @@ module.exports = {
 	});
     },
 
+
     /**
      * CHANGE USER PASSWORD
      *   It changes the password of a particular user.
@@ -470,7 +574,7 @@ module.exports = {
 	    return res.badRequest('Pasword must be at least 6 characters long.');
 
 	// Encrypt password as before
-	var encPassword = PasswordsService(req.param('password'));
+	var encPassword = PasswordsService.encrypt(req.param('password'));
 
 	encPassword.then(function (hash) {
 	    // Promise has been successful. Therefore, it sends data to Mongo DB
@@ -479,8 +583,7 @@ module.exports = {
 	    },{
 		encryptedPassword: hash
 	    }).exec(function (err, updatedUser) {
-		if (err)
-		    return res.negotiate(err);
+		if (err) return res.negotiate(err);
 		return res.json(updatedUser);
 	    });
 	}).catch(function (err){
@@ -491,80 +594,110 @@ module.exports = {
 	return null; // To keep compiler happy
     },
 
-
-    /**
-     * VERIFY PROFILE
-     *   It changes the user attribute 'verified' to true. This means that the
-     *   user registered with a valid email address. If the link is expired, it
-     *   sends a new one to the registered address. Otherwise, it returns a 403
-     *   error.
-     *
-     * + URL: /user/verify-profile
-     * + Method: PUT
-     * + URL Params: Mandatory:
-     *               authorization=string
-     *               username=string
-     *               firstname=string
-     *               lastname=string
-     *               email=string
-     * + Data Params: None
-     * + Success Response:
-     *     - Code: 200
-     *     - Content:
-     * + Error Response:
-     *     - Code: 403
-     *     - Content: string
-     *     OR 
-     *     - Code: 500
-     *     - Content: string
+    /*
+     One step reset password logic.
      */
-    verifyProfile: function(req,res) {
-	var token = req.param('authorization');
-	var verifiedToken = JWTService.verifyToken(token);
-	
-	if (verifiedToken.error && verifiedToken.error.name === 'TokenExpiredError') {
-	    VerificationEmailService.generate({userName: req.param('username'),
-					       firstName: req.param('firstname'),
-					       lastName: req.param('lastName'),
-					       email: req.param('email')})
-		.then(function (string){
-		    return res.ok(string);
-		}).catch(function(err) {
-		    return res.negotiate(err);
+    resetPassword: function(req, res) {
+	//validate request parameters
+	if (_.isUndefined(req.param('username')))
+	    return res.badRequest('A username is required');
+	if (_.isUndefined(req.param('email')))
+	    return res.badRequest('An email is required');
+
+	// reset password logic
+	User.findOne({
+	    userName: req.param('username'),
+	    email: req.param('email')
+	}).exec(function(err, user){
+	    if (err) return res.forbidden('You are not authorised to perform this action.');
+	    
+	    //generate new password
+	    // var newPassword = crypto.randomBytes(16).toString('hex'); //32 chars-long random alphanumeric string
+	    var newPassword = PasswordsService.generatePassword(32);
+	    var encPassword = PasswordsService.encrypt(newPassword);
+
+	    encPassword.then(function(hash) {
+		User.update({
+		    id: user.id
+		}, {
+		    encryptedPassword: hash
+		}).exec(function (err, updatedUser) {
+		    if (err) return res.negotiate(err);
+		    SendgridService.send({
+			to: [{name: user.firstName + ' ' + user.lastName, email: user.email}],
+			from: {name : 'admin', email : 'noreply@someservice.ml'},
+			subject: 'Password reset',
+			body: {text: '<H1>Reset your password</H1><br>' +
+			       '<p>We received a request to reset your password.<br><br>' +
+			       'This is your new password:<br>' +
+			       newPassword + '<br>'+ 
+			       'Please change it as soon as possible.</p>',
+			       format: 'html'}
+		    }, function(err, data) {
+			if (err) return res.negotiate(err);
+			return res.ok('Sent verification link to the specified email account');
+		    });
+		    return null; // To keep compiler happy
 		});
-	    return null; // To prevent unhandled promise rejection error
-	}
-	
-	if (verifiedToken.error)
-	    return res.forbidden('You are not authorised to perform this action.');
-
-	User.findOne({userName: verifiedToken.user}).exec(function (err, user) {
-	    if (err)
+	    }).catch(function(err) {
 		return res.negotiate(err);
-	    if (!user)
-		return res.notFound();
-
-	    User.update({id: user.id}, {verified: true}, function (err, updatedUser) {
-		if (err)
-		    return res.negotiate(err);
-		
-		// Authenticates the user.
-		// req.session['passport']['user'] = user.id;
-		passport.authenticate('local', function (err, user, response){
-			if (err)
-			    return res.negotiate(err);
-		    if (user && response.message === 'logged_in')
-			return res.json(user);
-		    return res.serverError('Something went wrong.');
-		})(req, res);
-
-		return null; // To keep compiler happy
 	    });
 	    return null; // To keep compiler happy
 	});
 	return null; // To keep compiler happy
     },
 
+
+    /*
+     Two-steps reset password logic. In this case the user would request a reset
+     password, and the system would send them an email asking them to follow a link
+     if they requested the password reset. This link expires after 5 minutes. If
+     they press the link and the link is still valid, it would redirect the user
+     to the change password view where they would be able to change the password.
+     
+     Note that the current implementation doesn't do this as there is not such a
+     view. It responds with a 200 'It would redirect to the change password view'.
+     */
+    resetPasswordRequest: function (req, res) {
+	//validate request parameters
+	if (_.isUndefined(req.param('username')))
+	    return res.badRequest('A username is required');
+	if (_.isUndefined(req.param('email')))
+	    return res.badRequest('An email is required');
+
+	// reset password logic
+	User.findOne({
+	    userName: req.param('username'),
+	    email: req.param('email')
+	}).exec(function(err, user){
+	    if (err) return res.forbidden('You are not authorised to perform this action.');
+	    PasswordsService.sendMail(user).then(function (string){
+		return res.ok(string);
+	    }).catch(function(err) {
+		return res.negotiate(err);
+	    });
+	    return null; // To keep compiler happy
+	});
+	return null; // To keep compiler happy
+    },
+
+
+    resetPasswordWithToken: function(req, res){
+	// request parameters validation
+	if (!_.isString(req.param('token')))
+	    return res.badRequest('An authorization token is required.');
+
+	// verification logic
+	var token = req.param('token');
+	var verifiedToken = JWTService.verifyToken(token);
+	
+	if (verifiedToken.error)
+	    return res.forbidden('You are not authorised to perform this action.');
+
+	return res.ok('It would redirect to the change password view');
+
+	return null; // To keep compiler happy
+    },
     /* ==================
        ADMIN USER ACTIONS
        ================== */
