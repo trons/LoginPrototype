@@ -36,7 +36,7 @@ module.exports = {
 	if (!options) {
 	    options = {
 		algorithm: sails.config.jwtSettings.algorithm,
-		expiresIn: sails.config.jwtSettings.expires_in,
+		expiresIn: sails.config.jwtSettings.expiresIn,
 		issuer: sails.config.jwtSettings.issuer,
 		audience: sails.config.jwtSettings.audience
 	    };
@@ -65,7 +65,7 @@ module.exports = {
 	if (!options) {
 	    options = {
 		algorithm: sails.config.jwtSettings.algorithm,
-		expiresIn: sails.config.jwtSettings.expires_in,
+		expiresIn: sails.config.jwtSettings.expiresIn,
 		issuer: sails.config.jwtSettings.issuer,
 		audience: sails.config.jwtSettings.audience
 	    };

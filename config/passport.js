@@ -28,9 +28,9 @@ var passport = require('passport'),
     JWTStrategy = require('passport-jwt').Strategy,
     ExtractJwt = require('passport-jwt').ExtractJwt;
 
-// JWT Configuration (Change these values to what it fits best to you)
+// JWT Default configuration (Change these values to what it fits best to you)
 var SECRET = process.env.tokenSecret || 'jwt-secret';
-var EXPIRES_IN = 60 * 60;
+var EXPIRES_IN = 60 * 60; // <----- Expires in one hour.
 var ALGORITHM = 'HS256';
 var ISSUER = 'accounts.examplesoft.com';
 var AUDIENCE = 'yoursite.net';
