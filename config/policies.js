@@ -31,7 +31,7 @@ module.exports.policies = {
     UserController : {
 	login: ['isLoggedOut'],
 	signup: ['isLoggedOut'],
-	profile: ['isLoggedIn'],
+	profile: ['isLoggedIn'],//['isAuthorised'], // <--- This policy is defined but not used.
 	delete: ['isLoggedIn', 'isAdmin'],
 	removeProfile: ['isLoggedIn'],
 	restoreProfile: ['isLoggedOut'],

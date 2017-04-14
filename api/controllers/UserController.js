@@ -42,7 +42,8 @@ module.exports = {
 	    if (err)
 		return res.negotiate(err);
 	    if (user)
-		return res.json(user);
+		return res.json({token: JWTService.issueToken({id: user.id}),
+				 user: user});
 	    if (!user){
 		switch(response.message){
 		case 'user_not_found':
@@ -164,7 +165,10 @@ module.exports = {
 		userName: req.param('userName'),
 		email: req.param('email'),
 		encryptedPassword: hash
-		// admin, deleted, banned and verified attributes are false by default (cf. ~/api/models/User.js)
+		/*
+		 * admin, deleted, banned and verified attributes are false
+		 * by default (cf. ~/api/models/User.js)
+		 */
 	    };
 	    // Therefore, it sends data to Mongo DB
 	    User.create(options).exec(function (err, user) {
@@ -185,22 +189,12 @@ module.exports = {
 
 		//generate email verification link and send it by email
 		VerificationEmailService.generate(user).then(function (string){
+		    // return res.redirect('/'); // <--- Redirect to the root route (usually main page) 
 		    return res.ok(string);
 		}).catch(function(err) {
 		    return res.negotiate(err);
 		});
 		
-		/*
-		// Authenticates the user (Passport)
-		passport.authenticate('local', function (err, user, response){
-		    if (err)
-			return res.negotiate(err);
-		    if (user && response.message === 'logged_in')
-			return res.json(user);
-		    return res.serverError('Something went wrong.');
-		})(req, res);
-		 */
-
 		return null; // To keep compiler happy
 	    });
 	}).catch(function (err) {
@@ -261,7 +255,7 @@ module.exports = {
 	if (verifiedToken.error && verifiedToken.error.name === 'TokenExpiredError') {
 	    VerificationEmailService.generate({userName: req.param('username'),
 					       firstName: req.param('firstname'),
-					       lastName: req.param('lastName'),
+					       lastName: req.param('lastname'),
 					       email: req.param('email')})
 		.then(function (string){
 		    return res.ok(string);
@@ -277,36 +271,11 @@ module.exports = {
 	User.update({userName: verifiedToken.user},
 		    {verified: true}).exec(function (err, updatedUser){
 			if (err) return res.negotiate(err);
-			return res.ok('verified email');			    
+			return res.ok('verified email');
 		    });
-	/*
-	User.findOne({userName: verifiedToken.user}).exec(function (err, user) {
-	    if (err)
-		return res.negotiate(err);
-	    if (!user)
-		return res.notFound();
-
-	    User.update({id: user.id}, {verified: true}, function (err, updatedUser) {
-		if (err)
-		    return res.negotiate(err);
-		
-		// Authenticates the user.
-		// req.session['passport']['user'] = user.id;
-		passport.authenticate('local', function (err, user, response){
-			if (err)
-			    return res.negotiate(err);
-		    if (user && response.message === 'logged_in')
-			return res.json(user);
-		    return res.serverError('Something went wrong.');
-		})(req, res);
-
-		return null; // To keep compiler happy
-	    });
-	    return null; // To keep compiler happy
-	});
-	 */
+	
 	return null; // To keep compiler happy
-    },			   
+    },
 
 
     /**
@@ -355,7 +324,8 @@ module.exports = {
 		banned: user.banned,
 		id: user.id
 	    };
-	    return res.json(options);
+	    return res.json({token: JWTService.issueToken({id: user.id}),
+			     user: options});
 	});
     },
 
@@ -434,7 +404,7 @@ module.exports = {
 		return res.notFound();
 	    // Removes the user session.
 	    delete req.logout();
-	    return res.json(removedUser);
+	    return res.json(removedUser[0]);
 	});
 
 	return null; // To keep compiler happy
@@ -482,7 +452,9 @@ module.exports = {
 		User.update({id: user.id}, {deleted: false}, function (err, updatedUser) {
 		    if (err)
 			return res.negotiate(err);
-
+		    return res.json({token: JWTService.issueToken({id: updatedUser[0].id}),
+				     user: updatedUser[0]});
+		    /*
 		    // Authenticates the user.
 		    req.session.passport.user = user.id;
 		    passport.authenticate('local', function (err, user, response){
@@ -494,6 +466,7 @@ module.exports = {
 		    })(req, res);
 
 		    return null; // To keep compiler happy
+		     */
 		});
 		return null; // To keep compiler happy
 	    }).catch(function (err) {
@@ -539,7 +512,8 @@ module.exports = {
 	    if (err)
 		return res.negotiate(err);
 
-	    return res.json(updatedUser);
+	    return res.json({token: JWTService.issueToken({id: updatedUser[0].id}),
+			     user: updatedUser[0]});
 	});
     },
 
@@ -584,7 +558,8 @@ module.exports = {
 		encryptedPassword: hash
 	    }).exec(function (err, updatedUser) {
 		if (err) return res.negotiate(err);
-		return res.json(updatedUser);
+		return res.json({token: JWTService.issueToken({id: updatedUser[0].id}),
+				 user: updatedUser[0]});
 	    });
 	}).catch(function (err){
 	    // Promise failed. Therefeore, it fails miserably
@@ -594,8 +569,32 @@ module.exports = {
 	return null; // To keep compiler happy
     },
 
+
     /*
      One step reset password logic.
+     */
+
+    /**
+     * RESET USER PASSWORD
+     *   It resets the password of a particular user.
+     *
+     * + URL: /user/reset-password
+     * + Method: GET
+     * + URL Params: None
+     * + Data Params: {username: string,
+     *                 email: string}
+     * + Success Response:
+     *     - Code: 200
+     *     - Content:
+     * + Error Response:
+     *     - Code: 400
+     *     - Content: string
+     *     OR
+     *     - Code: 403
+     *     - Content: string
+     *     OR 
+     *     - Code: 500
+     *     - Content: string
      */
     resetPassword: function(req, res) {
 	//validate request parameters
@@ -658,6 +657,32 @@ module.exports = {
      Note that the current implementation doesn't do this as there is not such a
      view. It responds with a 200 'It would redirect to the change password view'.
      */
+
+    /**
+     * RESET USER PASSWORD
+     *   It handles the request for a reset password made by a particular user.
+     *   If the user exists and the email matches the one stored in the database
+     *   for that user, it sends an email with a link to confirm the password
+     *   reset.
+     *
+     * + URL: /user/request-reset-password
+     * + Method: GET
+     * + URL Params: None
+     * + Data Params: {username: string,
+     *                 email: string}
+     * + Success Response:
+     *     - Code: 200
+     *     - Content:
+     * + Error Response:
+     *     - Code: 400
+     *     - Content: string
+     *     OR
+     *     - Code: 403
+     *     - Content: string
+     *     OR 
+     *     - Code: 500
+     *     - Content: string
+     */
     resetPasswordRequest: function (req, res) {
 	//validate request parameters
 	if (_.isUndefined(req.param('username')))
@@ -682,6 +707,28 @@ module.exports = {
     },
 
 
+    /**
+     * RESET USER PASSWORD
+     *   It resets the password of a particular user.
+     *
+     * + URL: /user/reset-password
+     * + Method: GET
+     * + URL Params: None
+     * + Data Params: {username: string,
+     *                 email: string}
+     * + Success Response:
+     *     - Code: 200
+     *     - Content:
+     * + Error Response:
+     *     - Code: 400
+     *     - Content: string
+     *     OR
+     *     - Code: 403
+     *     - Content: string
+     *     OR 
+     *     - Code: 500
+     *     - Content: string
+     */
     resetPasswordWithToken: function(req, res){
 	// request parameters validation
 	if (!_.isString(req.param('token')))

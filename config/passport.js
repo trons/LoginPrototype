@@ -28,9 +28,9 @@ var passport = require('passport'),
     JWTStrategy = require('passport-jwt').Strategy,
     ExtractJwt = require('passport-jwt').ExtractJwt;
 
-// JWT Configuration
+// JWT Configuration (Change these values to what it fits best to you)
 var SECRET = process.env.tokenSecret || 'jwt-secret';
-var EXPIRES_IN = 10 * 60;
+var EXPIRES_IN = 60 * 60;
 var ALGORITHM = 'HS256';
 var ISSUER = 'accounts.examplesoft.com';
 var AUDIENCE = 'yoursite.net';
@@ -119,7 +119,7 @@ function _verifyLocalHandler(req, username, password, done) {
 		    if (err)
 			return done(null, false, {message: err});
 		    // Respond with 200 OK status
-		    return done(null, {token: JWTService.issueToken({user: user.id}, SECRET, DEFAULT_OPTIONS),
+		    return done(null, {token: JWTService.issueToken({id: user.id}, SECRET, DEFAULT_OPTIONS),
 				       user: user}, {message: 'logged_in'});
 		});
 
@@ -136,32 +136,30 @@ function _verifyLocalHandler(req, username, password, done) {
 
 function _verifyJwtHandler(req, jwtPayload, done) {
     process.nextTick(function () {
-	console.log('in_verfiyJwtHandler process.nextTick(function()');
 	User.findOne({id: jwtPayload.id}).exec(function (err, user) {
-	    console.log('in_verfiyJwtHandler process.nextTick(function()\n'+
-		        'User.findone({id: jwtPayload.id}).exec(function(err, user)');
 	    //handle Mongo DB error
 	    if (err) return done(err);
 	    
 	    // user not found
 	    if (!user) return done(null, false, {message: 'user_not_found'});
 
-	    // check token
-	    var checkToken = JWTService.verifyToken(jwtPayload, SECRET, {});
+	    // user is deleted
+	    if (user.deleted) return done(null, false, {message: 'deleted'});
 
-	    checkToken.then (function(err){
-		console.log('in _verifyJwtHandler(req, jwtPayload, done .then');
-		// TO DO: ALL THIS SHIT
+	    // user is banned
+	    if (user.banned) return done(null, false, {message: 'banned'});
+
+	    // user email is not verified
+	    if (!user.verified)	return done(null, false, {message: 'not-verified'});
+
+	    // Login user
+	    req.login(user, function (err) {
 		if (err)
-		    return done(null, false, {message:err});
+		    return done(null, false, {message: err});
 		// Respond with 200 OK status
 		return done(null, user, {message: 'authorized'});
-	    }).catch(function (err){
-		return done(err);
-	    });
-
-	    return null; // To keep compiler happy.
+		});
+	    return null; // To keep compiler happy
 	});
     });    
 };
-

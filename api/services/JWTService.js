@@ -2,8 +2,8 @@
 
 /**
  * @fileoverview
- * This is a service to sign and verify JSON Web Tokens (JWT) to authorise requests
- * made to the server.
+ * This is a service to sign and verify JSON Web Tokens (JWT) to authorise
+ * requests made to the server.
  *
  * @summary JWT service.
  * @requires jsonwebtoken.js
@@ -19,10 +19,10 @@ var jwt = require('jsonwebtoken');
 
 module.exports = {
     /**
-     * Provided a payload, a secret or a private key, and some options, it returns
-     * a promise with a JWT token.
+     * Provided a payload, a secret or a private key, and some options, it
+     * returns a JWT token. Note that this function is synchronous.
      *
-     * @param {Object} payload - an object containin the information passed by
+     * @param {Object} payload - an object containin the information passed to
      *                           the JWT body.
      * @param {String} secretOrPrivatekey - Encryption key.
      * @param {Object} options - JWT options.
@@ -43,15 +43,15 @@ module.exports = {
 	}
 	
 	// generate token
-	// Synchronous
 	return jwt.sign(payload, secretOrPrivatekey, options);
     },
 
     /**
-     * Provided a payload, a secret or a private key, and some options, it returns
-     * a promise with a JWT token.
+     * Provided a payload, a secret or a private key, and some options, it
+     * returns a promise with a JWT token. This function is the asynchronous
+     * version of the issueToken function.
      *
-     * @param {Object} payload - an object containin the information passed by
+     * @param {Object} payload - an object containin the information passed to
      *                           the JWT body.
      * @param {String} secretOrPrivatekey - Encryption key.
      * @param {Object} options - JWT options.
@@ -81,14 +81,13 @@ module.exports = {
     },
 
     /**
-     * It verifies a JWT token and returns a an object with the decoded token or an
-     * error if something went wrong.
+     * It verifies a JWT token and returns a an object with the decoded token or
+     * an error if something went wrong. Note that this function is synchronous.
      *
-     * @param {Object} payload - an object containin the information corresponding
-     *                           passed by the JWT body.
+     * @param {String} token -  JWT token.
      * @param {String} secretOrPrivatekey - Encryption secret.
      * @param {Object} options - JWT options.
-     * @return {Object} object with a JWT token or an error.
+     * @return {Object} - object with the decoded JWT token or an error.
      */
     verifyToken: function (token, secretOrPublicKey, options){
 	// validate key and options
@@ -109,15 +108,15 @@ module.exports = {
 
     /**
      * It verifies a JWT token and returns a promise with the decoded token or an
-     * error if something went wrong.
+     * error if something went wrong. This function is the asynchronous version 
+     * of the verifyToken function.
      *
-     * @param {Object} payload - an object containin the information corresponding
-     *                           passed by the JWT body.
+     * @param {Object} token - A JWT token.
      * @param {String} secretOrPrivatekey - Encryption secret.
      * @param {Object} options - JWT options.
-     * @return {Promise} promise object with a JWT token.
+     * @return {Promise} promise object with the decoded  JWT token or an error.
      */
-    verifyTokenAsync: function (token, secretOrPublicKey, options){
+    verifyTokenAsync: function (token, secretOrPublicKey, options) {
 	// validate key and options
 	if (!secretOrPublicKey)
 	    secretOrPublicKey = sails.config.jwtSettings.secret;
@@ -163,12 +162,12 @@ module.exports = {
 		    token = credentials;
 	    } else if (throwError)
 	    // 401 Unauthorized
-	    throw new Error('infalid authorization header format. Format is Authorization: Bearer [token]');
+	    throw new Error('invalid authorization header format. Format is Authorization: Bearer [token]');
 	} else if (req.param('token')) {
 	    token = req.param('token');
 	} else if (throwError) {
 	    // 401 Unauthorized
-	    throw new Error('No autrhorization header was found');
+	    throw new Error('No authorization header was found');
 	}
 
 	return sails.services('jWTService').verifyToken(token);
