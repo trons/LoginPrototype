@@ -10,9 +10,9 @@
  *
  * @module ./email.js
  * @export email
- * @author Mario Moro Hernández <mariomoro@icanplay.co.uk>
- * @copyright ICAN Future Star LTD 2016
- * @version 1.0.0
+ * @author Mario Moro Hernández
+ * @license None
+ * @version 0.0.alpha
  * @requires fs.js
  * @requires sendgrid.js
  */
@@ -24,6 +24,7 @@ var fs = require('fs');
 var sg = require('sendgrid')(process.env.SENDGRID_API_KEY || sails.config.sendgrid.apiKey);
 
 // templates object to hold the ids of the transactional templates (if any).
+// The format is {'Template_Name': 'Template_ID'[, ...]}
 var templates = {};
 
 // default from, body and subject fields to build the email object.
@@ -99,7 +100,7 @@ function buildBody(data, templates) {
     if (data.body)
 	bodyJSON.content = [
 	    {
-		type: 'text/' + data.body.format,
+		type: 'text/' + (data.body.format || 'plain'),
 		value: data.body.text
 	    }
 	];
@@ -135,7 +136,7 @@ function validateData(templates, defaults, data, callback) {
     if (!data.to) 
 	if (callback) callback({error:'Receipt email address required'});
     
-    if (!data.templateName && (!data.body || !data.subject))
+    if (!data.templateName && !data.body)
 	if (callback) callback({error: 'Email template no specified, so body and subject are required'});
     
     if (data.hasOwnProperty('templateName') && !templates.hasOwnProperty(data.templateName))

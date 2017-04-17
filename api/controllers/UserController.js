@@ -29,7 +29,8 @@ module.exports = {
      *                 password: string}
      * + Success Response:
      *     - Code: 200
-     *     - Content:
+     *     - Content: {token: string,
+     *                 user: object}
      * + Error Response:
      *     - Code: 404
      *     - Content: string
@@ -38,13 +39,17 @@ module.exports = {
      *     - Content: string
      */
     login: function (req, res, next){
-	passport.authenticate('local', function (err, user, response) {
+	if (_.isUndefined(req.param('userName')) || _.isUndefined(req.param('password')))
+	    return res.badRequest('The request was malformed.');
+	
+	passport.authenticate('local', function (err, tokenAndUser, response) {
 	    if (err)
 		return res.negotiate(err);
-	    if (user)
-		return res.json({token: JWTService.issueToken({id: user.id}),
-				 user: user});
-	    if (!user){
+	    
+	    if (tokenAndUser)
+		return res.json(tokenAndUser);// <--- {token: JWT, user: user});
+
+	    if (!tokenAndUser){
 		switch(response.message){
 		case 'user_not_found':
 		    return res.notFound('The username you entered is unknown.');
@@ -62,6 +67,8 @@ module.exports = {
 	    }
 	    return res.badRequest('The request was malformed.');
 	})(req, res, next);
+
+	return null; // To keep compiler happy
     },
 
     /**
@@ -138,7 +145,7 @@ module.exports = {
 	    return res.badRequest('A user name is required');
 
 	if (!_.isString(req.param('userName')) || req.param('userName').match(/[^a-z0-9]/i))
-	    return res.badRequest('Invalid username: must consist of numbers and letters only.');
+	    return res.badRequest('Invalid username: must consist of numbers and letters only');
 
 	// email
 	if (_.isUndefined(req.param('email')))
