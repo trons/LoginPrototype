@@ -9,7 +9,6 @@ describe('UserController', function() {
     var randomUser = {
 	"firstName": rs.generate(10),
 	"lastName": rs.generate(10),
-	"userName": rs.generate(10),
 	"email": 'mariomoro@icanplay.co.uk',
         "password": "p4$$w0Rd"
     };
@@ -43,7 +42,7 @@ describe('UserController', function() {
 		.catch(done);
 	});
 
-	it('cannot register a user with an existing username', function (done) {
+/*	it('cannot register a user with an existing username', function (done) {
 	    request(sails.hooks.http.app)
 		.post('/user/signup')
 		.send({firstName: rs.generate(10),
@@ -58,7 +57,7 @@ describe('UserController', function() {
 		    done();
 		})
 		.catch(done);
-	});
+	});*/
 	
 	it('cannot register a user with an existing email', function (done) {
 	    request(sails.hooks.http.app)
@@ -81,7 +80,6 @@ describe('UserController', function() {
 	    request(sails.hooks.http.app)
 		.post('/user/signup')
 		.send({lastName: rs.generate(10),
-		       userName: randomUser.userName,
 		       email: 'mariomoro@icanplay.co.uk',
 		       password: 'p4SSw0Rd'
 		      })
@@ -97,7 +95,6 @@ describe('UserController', function() {
 	    request(sails.hooks.http.app)
 		.post('/user/signup')
 		.send({firstName: rs.generate(10),
-		       userName: randomUser.userName,
 		       email: 'mariomoro@icanplay.co.uk',
 		       password: 'p4SSw0Rd'
 		      })
@@ -109,7 +106,7 @@ describe('UserController', function() {
 		.catch(done);
 	});
 
-	it('cannot register a user without user name', function (done) {
+/*	it('cannot register a user without user name', function (done) {
 	    request(sails.hooks.http.app)
 		.post('/user/signup')
 		.send({firstName: rs.generate(10),
@@ -123,7 +120,7 @@ describe('UserController', function() {
 		    done();
 		})
 		.catch(done);
-	});
+	}); 
 
 	it('cannot register a user whose user name has other characters than numbers or letters', function (done) {
 	    request(sails.hooks.http.app)
@@ -140,14 +137,13 @@ describe('UserController', function() {
 		    done();
 		})
 		.catch(done);
-	});
+	}); */
 
 	it('cannot register a user without email', function (done) {
 	    request(sails.hooks.http.app)
 		.post('/user/signup')
 		.send({firstName: rs.generate(10),
 		       lastName: rs.generate(10),
-		       userName: randomUser.userName,
 		       password: 'p4SSw0Rd'
 		      })
 		.expect(400)
@@ -163,7 +159,6 @@ describe('UserController', function() {
 		.post('/user/signup')
 		.send({firstName: rs.generate(10),
 		       lastName: rs.generate(10),
-		       userName: randomUser.userName,
 		       email: 'mariomoro@icanplay',
 		       password: 'p4SSw0Rd'
 		      })
@@ -180,7 +175,6 @@ describe('UserController', function() {
 		.post('/user/signup')
 		.send({firstName: rs.generate(10),
 		       lastName: rs.generate(10),
-		       userName: randomUser.userName,
 		       email: 'mariomoro@icanplay.co.uk'
 		      })
 		.expect(400)
@@ -196,7 +190,6 @@ describe('UserController', function() {
 		.post('/user/signup')
 		.send({firstName: rs.generate(10),
 		       lastName: rs.generate(10),
-		       userName: randomUser.userName,
 		       email: 'mariomoro@icanplay.co.uk',
 		       password: 'p4SS'
 		      })
@@ -211,11 +204,11 @@ describe('UserController', function() {
 
     
     // LOG IN TEST UNITS
-    describe('PUT /login/', function() {
+    describe('POST /login/', function() {
 
-	it('cannot log in a user without user name', function (done) {
+	it('cannot log in a user without email', function (done) {
 	    request(sails.hooks.http.app)
-		.put('/login/')
+		.post('/login/')
 		.send({password: randomUser.password})
 		.expect(400)
 		.then(function(res) {
@@ -227,7 +220,7 @@ describe('UserController', function() {
 
 	it('cannot log in a user without password', function (done) {
 	    request(sails.hooks.http.app)
-		.put('/login/')
+		.post('/login/')
 		.send({userName: randomUser.userName})
 		.expect(400)
 		.then(function(res) {
@@ -239,12 +232,12 @@ describe('UserController', function() {
 
 	it('cannot log in an unknown user', function (done) {
 	    request(sails.hooks.http.app)
-		.put('/login/')
-		.send({userName: 'unknownUser',
+		.post('/login/')
+		.send({email: 'unknownUser@nodomain.no',
 		       password: '123456'})
 		.expect(404)
 		.then(function(res) {
-		    expect('The user name you entered is unknown.').to.be.ok;
+		    expect('The email you entered is unknown.').to.be.ok;
 		    done();
 		})
 		.catch(done);
@@ -252,9 +245,9 @@ describe('UserController', function() {
 
 	it('cannot log in a known user but with wrong password', function (done) {
 	    request(sails.hooks.http.app)
-		.put('/login/')
-		.send({userName: 'eltripi',
-		       password: randomUser.password})
+		.post('/login/')
+		.send({email: 'verified@piltrafilla.es',
+		       password: 'W4t73V£r'})
 		.expect(404)
 		.then(function(res) {
 		    expect('The password you entered is wrong.').to.be.ok;
@@ -265,10 +258,10 @@ describe('UserController', function() {
 
 	it('cannot log in a soft-deleted user', function (done) {
 	    request(sails.hooks.http.app)
-		.put('/login/')
-		.send({userName: 'perico',
-		       password: randomUser.password})
-		.expect(404)
+		.post('/login/')
+		.send({email: 'softdeleted@piltrafilla.es',
+		       password: '123456'})
+		.expect(403)
 		.then(function(res) {
 		    expect('Your account has been deleted. Please restore your account.').to.be.ok;
 		    done();
@@ -278,10 +271,10 @@ describe('UserController', function() {
 
 	it('cannot log in a banned user', function (done) {
 	    request(sails.hooks.http.app)
-		.put('/login/')
-		.send({userName: 'turulodeoro',
-		       password: randomUser.password})
-		.expect(404)
+		.post('/login/')
+		.send({email: 'banned@piltrafilla.es',
+		       password: '123456'})
+		.expect(403)
 		.then(function(res) {
 		    expect('Your account has been banned.').to.be.ok;
 		    done();
@@ -291,9 +284,9 @@ describe('UserController', function() {
 
 	it('cannot log in a signed-up but not-verified user', function (done) {
 	    request(sails.hooks.http.app)
-		.put('/login/')
-		.send({userName: randomUser.userName,
-		       password: randomUser.password})
+		.post('/login/')
+		.send({email: 'nonverified@piltrafilla.es',
+		       password: '123456'})
 		.expect(403)
 		.then(function(res) {
 		    expect('Your account is not verified').to.be.ok;
@@ -304,8 +297,8 @@ describe('UserController', function() {
 
 	it('can log in a registered and verified user', function (done) {
 	    request(sails.hooks.http.app)
-		.put('/login/')
-		.send({userName: 'eltripi',
+		.post('/login/')
+		.send({email: 'verified@piltrafilla.es',
 		       password: '123456'})
 		.expect(200)
 		.then(function(res) {

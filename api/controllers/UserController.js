@@ -6,10 +6,27 @@
  * @help        :: See http://sailsjs.org/#!/documentation/concepts/Controllers
  */
 
+/* ========
+   CONSTANT
+   ======== */
+const ROLES = Object.freeze(
+    {
+	NORMAL: 1,
+	SUPERUSER: 2,
+	ADMIN: 3
+    });
+
 /* ======
    IMPORT
    ====== */
-var passport = require('passport');
+let passport = require('passport');
+
+let crypto;
+try {
+    crypto = require('crypto');
+} catch(err) {
+    console.log('crypto support is disabled.');
+}
 
 /* ======
    EXPORT
@@ -23,9 +40,9 @@ module.exports = {
      *   It handles a user's login.
      *
      * + URL: /login
-     * + Method: PUT
+     * + Method: POST
      * + URL Params: None
-     * + Data Params: {userName: string,
+     * + Data Params: {email: string,
      *                 password: string}
      * + Success Response:
      *     - Code: 200
@@ -39,20 +56,22 @@ module.exports = {
      *     - Content: string
      */
     login: function (req, res, next){
-	if (_.isUndefined(req.param('userName')) || _.isUndefined(req.param('password')))
+	if (_.isUndefined(req.param('email')) || _.isUndefined(req.param('password')))
 	    return res.badRequest('The request was malformed.');
 	
 	passport.authenticate('local', function (err, tokenAndUser, response) {
 	    if (err)
 		return res.negotiate(err);
 	    
-	    if (tokenAndUser)
+	    if (tokenAndUser){
+		//req.userID is set in passport.js
 		return res.json(tokenAndUser);// <--- {token: JWT, user: user});
+	    }
 
 	    if (!tokenAndUser){
 		switch(response.message){
 		case 'user_not_found':
-		    return res.notFound('The username you entered is unknown.');
+		    return res.notFound('The email you entered is unknown.');
 		case 'wrong_password':
 		    return res.notFound('The password you entered is wrong.');
 		case 'deleted':
@@ -90,8 +109,71 @@ module.exports = {
      *     - Content: string
      */
     logout: function (req, res) {
+	delete req.userID;
 	delete req.logout();
 	return res.redirect('/');
+    },
+
+
+    /**
+     * AUTHORISE USER
+     *   It issues a JWT token if the credentials belongs to a registered and valid user.
+     *
+     * + URL: /auth-user
+     * + Method: POST
+     * + URL Params: None
+     * + Data Params: {email: string,
+     *                 password: string}
+     * + Success Response:
+     *     - Code: 200
+     *     - Content: {token: string,
+     *                 user: object}
+     * + Error Response:
+     *     - Code: 404
+     *     - Content: string
+     *     OR
+     *     - Code: 500
+     *     - Content: string
+     */
+    authUser: function(req, res) {
+	if (_.isUndefined(req.param('email')) || _.isUndefined(req.param('password')))
+	    return res.badRequest('The request was malformed.');
+
+	User.findOne({email: req.param('email')}).exec(function (err, user) {
+	    // handle Mongo DB error
+	    if (err) return done(err);
+	    
+	    // user not found
+	    if (!user) return res.notFound('The email you entered is unknown.');
+	    
+	    // check password
+	    var checkPassword = PasswordsService.compare(req.param('password'), user.encryptedPassword);
+
+	    checkPassword.then(function (match) {
+		// Promise was successful
+		if (!match)
+		    return res.notFound('The password you entered is wrong.');
+		
+		if (user.deleted)
+		    return res.forbidden('Your account has been deleted. Please restore your account.');
+
+		if (user.banned)
+		    return res.forbidden('Your account has been banned.');
+
+		if (!user.verified)
+		    return res.forbidden('Your account is not verified.');
+
+		// Issue token
+		return res.status(200).json({
+		    token: JWTService.issueToken({id: user.userID}/*, SECRET, OPTIONS*/)
+		});
+	    }).catch(function (err) {
+		// Promise failed, therefeore it fails misserably
+		return res.negotiate(err);
+	    });
+	    return null; // To keep compiler happy
+	});
+	return null; // To keep compiler happy
     },
 
     /* ===================
@@ -140,13 +222,6 @@ module.exports = {
 	if (_.isUndefined(req.param('lastName')))
 	    return res.badRequest('A last name is required');
 
-	// userName
-	if (_.isUndefined(req.param('userName')))
-	    return res.badRequest('A user name is required');
-
-	if (!_.isString(req.param('userName')) || req.param('userName').match(/[^a-z0-9]/i))
-	    return res.badRequest('Invalid username: must consist of numbers and letters only');
-
 	// email
 	if (_.isUndefined(req.param('email')))
 	    return res.badRequest ('An email is required');
@@ -167,9 +242,9 @@ module.exports = {
 	passEncryption.then(function (hash) {
 	    // Promise has been successful
 	    var options = {
+		userID: crypto.randomBytes(16).toString('hex'), //32 chars-long random alphanumeric string
 		firstName: req.param('firstName'),
 		lastName: req.param('lastName'),
-		userName: req.param('userName'),
 		email: req.param('email'),
 		encryptedPassword: hash
 		/*
@@ -181,14 +256,10 @@ module.exports = {
 	    User.create(options).exec(function (err, user) {
 		if (err){
 		    // Manage the errors from Mongo DB.
-		    if ((err.invalidAttributes &&
-			err.invalidAttributes.userName &&
-			err.invalidAttributes.userName[0] &&
-			err.invalidAttributes.userName[0].rule === 'unique') ||
-			(err.invalidAttributes &&
+		    if (err.invalidAttributes &&
 			err.invalidAttributes.email &&
 			err.invalidAttributes.email[0] &&
-			err.invalidAttributes.email[0].rule === 'unique')) { 
+			err.invalidAttributes.email[0].rule === 'unique') { 
 			// This uses the response defined in ~/api/responses/alreadyInUse.js
 			return res.alreadyInUse(err);
 		    }
@@ -246,21 +317,21 @@ module.exports = {
 	if (!_.isString(req.param('authorization')))
 	    return res.badRequest('A valid authorization token is required.');
 
-	if (!_.isString(req.param('username')))
-	    return res.badRequest('A valid username is required.');
-
 	if (!_.isString(req.param('firstname')))
 	    return res.badRequest('A valid firstname is required.');
 
 	if (!_.isString(req.param('lastname')))
 	    return res.badRequest('A valid lastname is required.');
+
+	if (!_.isString(req.param('email')))
+	    return res.badRequest('A valid email is required.');
 			   
 	// verification logic
 	var token = req.param('authorization');
 	var verifiedToken = JWTService.verifyToken(token);
 	
 	if (verifiedToken.error && verifiedToken.error.name === 'TokenExpiredError') {
-	    VerificationEmailService.generate({userName: req.param('username'),
+	    VerificationEmailService.generate({userID: JWTService.getPayload(token),
 					       firstName: req.param('firstname'),
 					       lastName: req.param('lastname'),
 					       email: req.param('email')})
@@ -275,7 +346,7 @@ module.exports = {
 	if (verifiedToken.error)
 	    return res.forbidden('You are not authorised to perform this action.');
 	
-	User.update({userName: verifiedToken.user},
+	User.update({userID: verifiedToken.userID},
 		    {verified: true}).exec(function (err, updatedUser){
 			if (err) return res.negotiate(err);
 			return res.ok('verified email');
@@ -293,17 +364,18 @@ module.exports = {
      * + URL: /user/profile/
      * + Method: GET
      * + URL Params: Required
-     *               id=string
+     *               userID=string
      * + Data Params :None
      * + Success Response:
      *     - Code: 200
-     *     - Content: {firstName: string,
-     *                 lastName: string,
-     *                 userName: string,
-     *                 deleted: boolean,
-     *                 banned: boolean,
-     *                 admin: boolean,
-     *                 id: string}
+     *     - Content: {userID: user.userID,
+     *		       firstName: user.firstName,
+     *		       lastName: user.lastName,
+     *		       userName: user.userName,
+     *                 email: user.email,
+     *                 role: user.role,
+     *                 deleted: user.deleted,
+     *                 banned: user.banned}
      * + Error Response:
      *     - Code: 400
      *     - Content: string
@@ -316,22 +388,22 @@ module.exports = {
      */
     profile: function (req, res) {
 	//console.log('req.session.passport.user = ' + JSON.stringify(req.user, null,2));
-	User.findOne(req.session.passport.user).exec(function foundUser(err, user) {
+	User.findOne({userID: req.userID}).exec(function foundUser(err, user) {
 	    if (err)
 		return res.negotiate(err);
 	    if (!user)
 		return res.notFound();
 	    var options = {
+		userID: user.userID,
 		firstName: user.firstName,
 		lastName: user.lastName,
 		userName: user.userName,
 		email: user.email,
+		role: user.role,
 		deleted: user.deleted,
-		admin: user.admin,
-		banned: user.banned,
-		id: user.id
+		banned: user.banned
 	    };
-	    return res.json({token: JWTService.issueToken({id: user.id}),
+	    return res.json({token: JWTService.issueToken({id: user.userID}),
 			     user: options});
 	});
     },
@@ -365,7 +437,7 @@ module.exports = {
 	    return res.badRequest('id is a required parameter.');
 
 	User.destroy({
-	    id: req.param('id')
+	    userID: req.param('id')
 	}).exec(function (err, userDestroyed){
 	    if (err)
 		return res.negotiate(err);
@@ -401,7 +473,7 @@ module.exports = {
      */
     removeProfile: function (req, res){
 	User.update({
-	    id: req.session.passport.user
+	    userID: req.userID
 	},{
 	    deleted: true
 	}, function (err, removedUser){
@@ -456,10 +528,10 @@ module.exports = {
 		    return res.notFound();
 		}
 		
-		User.update({id: user.id}, {deleted: false}, function (err, updatedUser) {
+		User.update({userID: user.userID}, {deleted: false}, function (err, updatedUser) {
 		    if (err)
 			return res.negotiate(err);
-		    return res.json({token: JWTService.issueToken({id: updatedUser[0].id}),
+		    return res.json({token: JWTService.issueToken({id: updatedUser[0].userID}),
 				     user: updatedUser[0]});
 		    /*
 		    // Authenticates the user.
@@ -493,7 +565,7 @@ module.exports = {
      * + URL: /user/update-profile
      * + Method: PUT
      * + URL Params: None
-     * + Data Params: {id: string,
+     * + Data Params: {userID: string,
      *                 firstName: string,
      *                 lastName: string}
      * + Success Response:
@@ -511,7 +583,7 @@ module.exports = {
      */
     updateProfile: function (req, res) {
 	User.update({
-	    id: req.session.passport.user
+	    userID: req.userID
 	}, {
 	    firstName: req.param('firstName'),
 	    lastName: req.param('lastName')
@@ -519,7 +591,7 @@ module.exports = {
 	    if (err)
 		return res.negotiate(err);
 
-	    return res.json({token: JWTService.issueToken({id: updatedUser[0].id}),
+	    return res.json({token: JWTService.issueToken({userID: updatedUser[0].userID}),
 			     user: updatedUser[0]});
 	});
     },
@@ -560,12 +632,12 @@ module.exports = {
 	encPassword.then(function (hash) {
 	    // Promise has been successful. Therefore, it sends data to Mongo DB
 	    User.update({
-		id: req.session.passport.user
+		userID: req.userID
 	    },{
 		encryptedPassword: hash
 	    }).exec(function (err, updatedUser) {
 		if (err) return res.negotiate(err);
-		return res.json({token: JWTService.issueToken({id: updatedUser[0].id}),
+		return res.json({token: JWTService.issueToken({userID: updatedUser[0].userID}),
 				 user: updatedUser[0]});
 	    });
 	}).catch(function (err){
@@ -605,26 +677,23 @@ module.exports = {
      */
     resetPassword: function(req, res) {
 	//validate request parameters
-	if (_.isUndefined(req.param('username')))
-	    return res.badRequest('A username is required');
 	if (_.isUndefined(req.param('email')))
 	    return res.badRequest('An email is required');
 
 	// reset password logic
 	User.findOne({
-	    userName: req.param('username'),
 	    email: req.param('email')
 	}).exec(function(err, user){
 	    if (err) return res.forbidden('You are not authorised to perform this action.');
 	    
 	    //generate new password
-	    // var newPassword = crypto.randomBytes(16).toString('hex'); //32 chars-long random alphanumeric string
-	    var newPassword = PasswordsService.generatePassword(32);
+	    var newPassword = crypto.randomBytes(16).toString('hex'); //32 chars-long random alphanumeric string
+	    // var newPassword = PasswordsService.generatePassword(32);
 	    var encPassword = PasswordsService.encrypt(newPassword);
 
 	    encPassword.then(function(hash) {
 		User.update({
-		    id: user.id
+		    userID: user.userID
 		}, {
 		    encryptedPassword: hash
 		}).exec(function (err, updatedUser) {
@@ -699,7 +768,6 @@ module.exports = {
 
 	// reset password logic
 	User.findOne({
-	    userName: req.param('username'),
 	    email: req.param('email')
 	}).exec(function(err, user){
 	    if (err) return res.forbidden('You are not authorised to perform this action.');
@@ -808,7 +876,9 @@ module.exports = {
      *     - Content: string
      */
     updateAdmin: function (req, res) {
-	User.update(req.param('id'), {
+	User.update({
+	    userID: req.param('id')
+	}, {
 	    admin:req.param('admin')
 	}).exec(function (err, update){
 	    if (err)
@@ -839,7 +909,9 @@ module.exports = {
      *     - Content: string
      */
     updateBanned: function (req, res) {
-	User.update(req.param('id'), {
+	User.update({
+	    userID: req.param('id')
+	}, {
 	    banned: req.param('banned')
 	}).exec(function (err, update){
 	    if (err)
@@ -870,7 +942,9 @@ module.exports = {
      *     - Content: string
      */
     updateDeleted: function (req, res) {
-	User.update(req.param('id'), {
+	User.update({
+	    userID: req.param('id')
+	}, {
 	    deleted: req.param('deleted')
 	}).exec(function (err, update){
 	    if (err)

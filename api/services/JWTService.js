@@ -41,7 +41,7 @@ module.exports = {
 		audience: sails.config.jwtSettings.audience
 	    };
 	}
-	
+
 	// generate token
 	return jwt.sign(payload, secretOrPrivatekey, options);
     },
@@ -133,6 +133,22 @@ module.exports = {
 		return resolve(decodedToken);
 	    });
 	});
+    },
+
+    getPayload: function (token, secretOrPublicKey, options) {
+	if (!secretOrPublicKey)
+	    secretOrPublicKey = sails.config.jwtSettings.secret;
+	
+	if (!(options === undefined || options === null))
+	    options.ignoreExpiration = true;
+	else
+	    options = {ignoreExpiration: true};
+	
+	try {
+	    return jwt.verify(token, secretOrPublicKey, options);
+	} catch (err) {
+	    return {error: err};
+	}
     },
 
 

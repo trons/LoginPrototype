@@ -30,11 +30,11 @@ module.exports = function isAdmin(req, res, next) {
     if (!req.isAuthenticated())
 	handleError(req,res);
 
-    User.findOne(req.session.passport.user).exec(function (err, foundUser) {
+    User.findOne(req.session.passport.user).exec(function (err, user) {
 	if (err)
 	    return res.negotiate(err);
 
-	if (foundUser.admin)
+	if (user.role === 3)
 	    return next();
 
 	handleError(req, res);

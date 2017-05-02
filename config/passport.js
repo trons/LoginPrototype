@@ -58,7 +58,7 @@ passport.serializeUser(function (user, done) {
     if (!user)
 	done({message: 'Invalid user.'}, null);
     else
-	done(null, user.id); // <---- only user ID is serialised to the session.
+	done(null, user.userID); // <---- only userID is serialised to the session.
 });
 
 // Passport deserialises the user by ID and returns the full user object.
@@ -70,7 +70,7 @@ passport.deserializeUser(function (id, done) {
 
 //Register the Local Strategy with Passport.
 passport.use(new LocalStrategy({
-    usernameField: 'userName',
+    usernameField: 'email',
     passwordField: 'password',
     passReqToCallback: true
 }, _verifyLocalHandler));
@@ -88,9 +88,9 @@ passport.use(new JWTStrategy({
 /* ------------------------
    VERIFY HANDLER FUNCTIONS
    ------------------------ */
-function _verifyLocalHandler(req, username, password, done) {
+function _verifyLocalHandler(req, email, password, done) {
     process.nextTick(function () {
-	User.findOne({userName: username}).exec(function (err, user) {
+	User.findOne({email: email}).exec(function (err, user) {
 	    // handle Mongo DB error
 	    if (err) return done(err);
 
@@ -118,8 +118,10 @@ function _verifyLocalHandler(req, username, password, done) {
 		req.login(user, function (err) {
 		    if (err)
 			return done(null, false, {message: err});
+
 		    // Respond with 200 OK status
-		    return done(null, {token: JWTService.issueToken({id: user.id}, SECRET, DEFAULT_OPTIONS),
+		    req.userID = user.userID;
+		    return done(null, {token: JWTService.issueToken({id: user.userID}, SECRET, DEFAULT_OPTIONS),
 				       user: user}, {message: 'logged_in'});
 		});
 
@@ -136,7 +138,7 @@ function _verifyLocalHandler(req, username, password, done) {
 
 function _verifyJwtHandler(req, jwtPayload, done) {
     process.nextTick(function () {
-	User.findOne({id: jwtPayload.id}).exec(function (err, user) {
+	User.findOne({userID: jwtPayload.id}).exec(function (err, user) {
 	    //handle Mongo DB error
 	    if (err) return done(err);
 	    
@@ -156,7 +158,9 @@ function _verifyJwtHandler(req, jwtPayload, done) {
 	    req.login(user, function (err) {
 		if (err)
 		    return done(null, false, {message: err});
+
 		// Respond with 200 OK status
+		req.userID = user.userID;
 		return done(null, user, {message: 'authorized'});
 		});
 	    return null; // To keep compiler happy

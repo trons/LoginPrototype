@@ -14,7 +14,7 @@
  * @license None
  * @version 0.0.alpha
  */
-
+ 
 // bcrypt encryption libary to encrypt the password.
 var bcrypt = require('bcryptjs');
 
@@ -58,7 +58,7 @@ module.exports = {
     generatePassword: function (length){
 	const letters = 'abcdefghijklmnopqrstuvwxyz';
 	const digits = '1234567890';
-	const symbols = '!$%&*()+-=_/\|<>';
+	const symbols = '!$()-_/\|<>';
 	var password = '';
 
 	for (var i = 0; i < length; i++){

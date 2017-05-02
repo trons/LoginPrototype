@@ -36,7 +36,8 @@ module.exports.routes = {
      * JSON API                                                                *
      ***************************************************************************/
     // Custom REST Routes for user actions
-    'PUT /login': 'UserController.login',
+    'POST /login': 'UserController.login',
+    'POST /auth-user': 'UserController.authUser',
     'GET /logout': 'UserController.logout',
 
     'GET /user/admin-users': 'UserController.adminUsers',

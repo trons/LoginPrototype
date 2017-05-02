@@ -9,31 +9,31 @@ module.exports = {
 
   connection: 'localMongodb', // <---- This must match the name on connections.js
 
-  //migrate: 'drop', // <---- This will drop any existing schema on the server restart
+  // migrate: 'drop', // <---- This will drop any existing schema on the server restart
 
   attributes: {
+      userID: {
+	  type: 'string',
+	  required: 'true',
+	  unique: 'true'
+      },
       firstName: {
 	  type: 'string'
       },
       lastName: {
 	  type: 'string'
       },
-      userName: {
+      email: {
 	  type: 'string',
 	  required: 'true', // <---- Forces the attribute to be there
 	  unique: 'true'    // <---- Forces the attribute to be unique (unique validation)
       },
-      email:{
-	  type: 'string',
-	  required: 'true',
-	  unique: 'true'
-      },
       encryptedPassword: {
 	  type: 'string'
       },
-      admin: {
-	  type: 'boolean',
-	  defaultsTo: 'false' // <---- Sets the default value to 'false'
+      role: {
+	  type: 'integer',
+	  defaultsTo: 1 // <---- Sets the default value to 'false'
       },
       deleted: {
 	  type: 'boolean',

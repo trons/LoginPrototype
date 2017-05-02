@@ -32,7 +32,7 @@ module.exports = {
     generate: function (user) {
 	return new Promise(function (resolve, reject) {
 	    //generate link
-	    var token = JWTService.issueToken({user: user.userName}, // payload
+	    var token = JWTService.issueToken({userID: user.userID}, // payload
 					      undefined, // secret (undefined, so the service uses the default)
 					      {algorithm: sails.config.jwtSettings.algorithm, // options
 					       expiresIn: 4 * 60 * 60, // <---- Link expires in 4 hours
@@ -40,7 +40,6 @@ module.exports = {
 					       audience: sails.config.jwtSettings.audience});
 	    
 	    var link = 'http://localhost:1337/user/verify-profile?authorization=' + token +
-	     '&username=' + user.userName +
 	     '&firstname=' + user.firstName +
 	     '&lastname=' + user.lastName +
 	     '&email=' + user.email;
