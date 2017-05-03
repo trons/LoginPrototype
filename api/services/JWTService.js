@@ -14,6 +14,9 @@
  * @version 0.0.alpha
  */
 
+/* ======
+   IMPORT
+   ====== */
 var jwt = require('jsonwebtoken');
 
 

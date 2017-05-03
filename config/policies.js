@@ -32,15 +32,15 @@ module.exports.policies = {
 	login: ['isLoggedOut'],
 	signup: ['isLoggedOut'],
 	profile: ['isLoggedIn'],//['isAuthorised'], // <--- This policy is defined but not used.
-	delete: ['isLoggedIn', 'isAdmin'],
+	delete: ['isAdmin'],
 	removeProfile: ['isLoggedIn'],
 	restoreProfile: ['isLoggedOut'],
 	updateProfile: ['isLoggedIn'],
 	changePassword: ['isLoggedIn'],
 	//adminUsers: ['isLoggedIn', 'isAdmin'],
-	updateAdmin: ['isLoggedIn', 'isAdmin'],
-	updateBanned: ['isLoggedIn', 'isAdmin'],
-	updateDeleted: ['isLoggedIn', 'isAdmin']
+	updateAdmin: ['isAdmin'],
+	updateBanned: ['isAdmin'],
+	updateDeleted: ['isAdmin']
     }
 
   /***************************************************************************

@@ -1,11 +1,40 @@
+'use-strict';
+
 /**
  * @fileoverview
- * This is a policy to check whether the user is logged in or not. This policy
- * is as defined in Sails.js in Action book (Ch 10 p. 267).
+ * This is the code to handle the "is logged in" policy. Given a request
+ * it checks whether that user is authenticated or authorised.
+ *
+ * @summary is logged in policy
+ * @module ./isLoggedIn.js
+ * @export isLoggedIn
+ * @author Mario Moro Hernández
+ * @license None
+ * @version 0.0.alpha
  */
 
+/* ======
+   IMPORT
+   ====== */
 var passport = require('passport');
 
+
+/**
+ * <p>It checks whether a request is authenticated, and if so whether the requester
+ * has an administrator role or not.</p>
+ *
+ * <p>If the user is an administrator, the request continues its execution. If the
+ * user is not an adminstrator, the request is rejected and the corresponding
+ * action is taken. This can be either redirecting to the root document, or
+ * sending a 401 - Unauthorized response with a new JWT Token if the user is an
+ * administrator and tried to authenticate using an expired JWT Token, or a
+ * 403 - Forbidden response.</p>
+ *
+ * @param {Object} req - Express request object.
+ * @param {Object} res - Express response object.
+ * @param {Object} next - middleware to execute next if success.
+ * @return {Object} - Express response object.
+ */
 module.exports = function isLoggedIn(req, res, next) {
     isAuthorised(req, res, next, function(issueNewToken, authorised){
 	if (req.isAuthenticated() || authorised)
@@ -23,7 +52,7 @@ module.exports = function isLoggedIn(req, res, next) {
 		
 		return res.status(401).json({token: JWTService.issueToken({id: payload})});
 	    });
-	    return null; // To prevent 'Can't set headers after they are sent' error
+	    return null; // To prevent 'Can't set headers after they are sent' error.
 	}
 	
 	if (req.wantsJSON)
@@ -33,15 +62,25 @@ module.exports = function isLoggedIn(req, res, next) {
     });
 };
 
-//passport library wrapper function
+
+/**
+ * Wrapper function for the passport.authenticate method. It returns a callback
+ * with two booleans indicating, respectively, if a new token must be issued and
+ * if the user is authorised.
+ *
+ * @param {Object} req - Express req object.
+ * @param {Object} res - Express res object.
+ * @param {Function} next - Express next middleware function.
+ * @param {Function} callback - callback function.
+ * @return {Function} - callback function.
+ */
 function isAuthorised(req, res, next, callback){
     passport.authenticate('jwt', function(err, user, response) {
 	if (user)
 	    return callback(false, true);
 
-	if (response.name === 'TokenExpiredError') {
+	if (response.name === 'TokenExpiredError')
 	    return callback(true, false);
-	}
 	    
 	return callback(false, false);
     })(req, res, next);
