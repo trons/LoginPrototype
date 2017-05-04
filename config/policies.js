@@ -38,7 +38,8 @@ module.exports.policies = {
 	updateProfile: ['isLoggedIn'],
 	changePassword: ['isLoggedIn'],
 	//adminUsers: ['isLoggedIn', 'isAdmin'],
-	updateAdmin: ['isAdmin'],
+	//updateAdmin: ['isAdmin'],
+	updateRole: ['isAdmin'],
 	updateBanned: ['isAdmin'],
 	updateDeleted: ['isAdmin']
     }

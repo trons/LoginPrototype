@@ -65,7 +65,9 @@ module.exports = {
 	    
 	    if (tokenAndUser){
 		//req.userID is set in passport.js
-		return res.json(tokenAndUser);// <--- {token: JWT, user: user});
+		//req.userID = tokenAndUser.user.userID;
+		console.log('in login:function (req, res, next)\nreq.session.userID = ' + req.session.userID);
+		return res.json(tokenAndUser); // <--- {token: JWT, user: user});
 	    }
 
 	    if (!tokenAndUser){
@@ -388,6 +390,8 @@ module.exports = {
      */
     profile: function (req, res) {
 	//console.log('req.session.passport.user = ' + JSON.stringify(req.user, null,2));
+	console.log('in profile: function (req, res)\n' +
+		    'req.userID = ' + req.userID);
 	User.findOne({userID: req.userID}).exec(function foundUser(err, user) {
 	    if (err)
 		return res.negotiate(err);
@@ -817,8 +821,6 @@ module.exports = {
 	    return res.forbidden('You are not authorised to perform this action.');
 
 	return res.ok('It would redirect to the change password view');
-
-	return null; // To keep compiler happy
     },
     /* ==================
        ADMIN USER ACTIONS
@@ -874,7 +876,6 @@ module.exports = {
      *     OR 
      *     - Code: 500
      *     - Content: string
-     */
     updateAdmin: function (req, res) {
 	User.update({
 	    userID: req.param('id')
@@ -887,6 +888,50 @@ module.exports = {
 
 	    return null; // To keep compiler happy
 	});
+    },
+     */
+    /**
+     * UPDATE ADMIN FLAG
+     *   It changes the admin attribute for a particular user.
+     *
+     * + URL: /user/update-admin
+     * + Method: PUT
+     * + URL Params: None
+     * + Data Params: {id: string,
+     *                 role: string}
+     * + Success Response:
+     *     - Code: 200
+     *     - Content: string
+     * + Error Response:
+     *     - Code: 400
+     *     - Content: string
+     *     OR
+     *     - Code: 403
+     *     - Content: string
+     *     OR 
+     *     - Code: 500
+     *     - Content: string
+     */
+    updateRole: function (req, res) {
+	//validate role
+	if (!_.isString(req.param('role')))
+	    return res.badRequest('A valid role is required.');
+
+	var newRole = req.param('role').toUpperCase();
+
+	if (!Object.keys(ROLES).includes(newRole))
+	    return res.badRequest('A valid role is required.');
+	
+	User.update({
+	    userID: req.param('id')
+	}, {
+	    role: ROLES[newRole]
+	}).exec(function (err, update){
+	    if (err)
+		return res.negotiate(err);
+	    return res.ok('OK');
+	});
+	return null; // To keep compiler happy
     },
 
     /**

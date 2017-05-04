@@ -56,7 +56,7 @@ module.exports.routes = {
     'PUT /user/restore-profile': 'UserController.restoreProfile',
     'PUT /user/update-profile': 'UserController.updateProfile',
     'PUT /user/change-password': 'UserController.changePassword',
-    'PUT /user/update-admin/:id': 'UserController.updateAdmin',
+    'PUT /user/update-role/:id': 'UserController.updateRole',
     'PUT /user/update-banned/:id': 'UserController.updateBanned',
     'PUT /user/update-deleted/:id': 'UserController.updateDeleted',
 

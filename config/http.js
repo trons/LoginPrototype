@@ -50,7 +50,7 @@ module.exports.http = {
 	  'favicon',
 	  '404',
 	  '500'
-      ]
+      ],
 
   /****************************************************************************
   *                                                                           *
@@ -62,7 +62,23 @@ module.exports.http = {
     //     console.log("Requested :: ", req.method, req.url);
     //     return next();
     // }
+      myRequestLogger: function (req, res, next){
+	  var output = 'Time: ' + new Date().toISOString() + '\n' +
+	   req.method + ' request\n' +
+	   'Path: ' + req.url + '\n';
+	  
+	  if (req.query)
+	      output += 'Query: ' + JSON.stringify(req.query, null, 2) + '\n';
+	  
+	  if (req.body)
+	      output += 'Body: ' + JSON.stringify(req.body, null, 2) + '\n';
 
+	  output += 'req.userID = ' + req.userID + '\n' +
+	      'req.session.passport = ' + JSON.stringify(req.session.passport, null, 2) + '\n';
+
+	  console.log(output);
+	  return next();	   
+      }
 
   /***************************************************************************
   *                                                                          *

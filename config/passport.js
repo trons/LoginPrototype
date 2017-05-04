@@ -90,6 +90,8 @@ passport.use(new JWTStrategy({
    ------------------------ */
 function _verifyLocalHandler(req, email, password, done) {
     process.nextTick(function () {
+	console.log('on top of process.nextTick(function (){...}\n' + 
+		    'req.userID = ' + req.session.userID);
 	User.findOne({email: email}).exec(function (err, user) {
 	    // handle Mongo DB error
 	    if (err) return done(err);
@@ -120,7 +122,7 @@ function _verifyLocalHandler(req, email, password, done) {
 			return done(null, false, {message: err});
 
 		    // Respond with 200 OK status
-		    req.userID = user.userID;
+		    req.session.userID = user.userID;
 		    return done(null, {token: JWTService.issueToken({id: user.userID}, SECRET, DEFAULT_OPTIONS),
 				       user: user}, {message: 'logged_in'});
 		});
