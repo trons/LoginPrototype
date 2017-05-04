@@ -38,6 +38,7 @@ module.exports.http = {
 	  'session',
 	  'passportInit',      // <---- Added for Passport
 	  'passportSession',   // <---- Added for Passport
+	  'setUserID',
 	  'myRequestLogger',
 	  'bodyParser',
 	  'handleBodyParserError',
@@ -58,10 +59,17 @@ module.exports.http = {
   *                                                                           *
   ****************************************************************************/
 
+      setUserID: function (req, res, next){
+	  if (!req.userID && req.session.passport)
+	      req.userID = req.session.passport.user;
+	  return next();
+      }
+
     // myRequestLogger: function (req, res, next) {
     //     console.log("Requested :: ", req.method, req.url);
     //     return next();
     // }
+      /*
       myRequestLogger: function (req, res, next){
 	  var output = 'Time: ' + new Date().toISOString() + '\n' +
 	   req.method + ' request\n' +
@@ -79,6 +87,7 @@ module.exports.http = {
 	  console.log(output);
 	  return next();	   
       }
+       */
 
   /***************************************************************************
   *                                                                          *

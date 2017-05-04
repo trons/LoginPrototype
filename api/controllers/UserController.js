@@ -63,10 +63,7 @@ module.exports = {
 	    if (err)
 		return res.negotiate(err);
 	    
-	    if (tokenAndUser){
-		//req.userID is set in passport.js
-		req.userID = tokenAndUser.user.userID;
-		console.log('in login:function (req, res, next)\nreq.session.userID = ' + req.userID);
+	    if (tokenAndUser) {
 		return res.json(tokenAndUser); // <--- {token: JWT, user: user});
 	    }
 
@@ -91,6 +88,7 @@ module.exports = {
 
 	return null; // To keep compiler happy
     },
+
 
     /**
      * LOGOUT
@@ -390,8 +388,6 @@ module.exports = {
      */
     profile: function (req, res) {
 	//console.log('req.session.passport.user = ' + JSON.stringify(req.user, null,2));
-	console.log('in profile: function (req, res)\n' +
-		    'req.userID = ' + req.userID);
 	User.findOne({userID: req.userID}).exec(function foundUser(err, user) {
 	    if (err)
 		return res.negotiate(err);
