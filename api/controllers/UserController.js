@@ -65,8 +65,8 @@ module.exports = {
 	    
 	    if (tokenAndUser){
 		//req.userID is set in passport.js
-		//req.userID = tokenAndUser.user.userID;
-		console.log('in login:function (req, res, next)\nreq.session.userID = ' + req.session.userID);
+		req.userID = tokenAndUser.user.userID;
+		console.log('in login:function (req, res, next)\nreq.session.userID = ' + req.userID);
 		return res.json(tokenAndUser); // <--- {token: JWT, user: user});
 	    }
 

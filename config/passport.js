@@ -122,7 +122,7 @@ function _verifyLocalHandler(req, email, password, done) {
 			return done(null, false, {message: err});
 
 		    // Respond with 200 OK status
-		    req.session.userID = user.userID;
+		    //req.session.userID = user.userID;
 		    return done(null, {token: JWTService.issueToken({id: user.userID}, SECRET, DEFAULT_OPTIONS),
 				       user: user}, {message: 'logged_in'});
 		});
